@@ -61,6 +61,40 @@ function chunkText(text, maxTokens = 400, overlap = 50) {
   return chunks;
 }
 
+async function getMoralLesson(text) {
+  if (!process.env.GROQ_API_KEY) {
+    return "Always be kind and trust in Allah.";
+  }
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [
+          { role: "system", content: "Extract the core moral lesson from the provided Islamic kids story in exactly one clear, beautiful sentence. If the text is mostly in Urdu, respond with an Urdu sentence. Do not include any extra text." },
+          { role: "user", content: text.substring(0, 1500) } // drastically limit size to avoid TPM limits
+        ]
+      })
+    });
+    const data = await res.json();
+    if (data.error) {
+       console.error("Groq API Error:", data.error.message);
+       // Fallback on error
+       return "Learn from the stories of the Prophets and always be good.";
+    }
+    return data.choices[0].message.content.trim();
+  } catch (e) {
+    console.error("Failed to generate moral lesson:", e);
+    return "Learn from the stories of the Prophets.";
+  }
+}
+
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
 async function getEmbeddings(chunks) {
   if (process.env.OPENAI_API_KEY) {
     const embeddings = [];
@@ -131,12 +165,17 @@ async function main() {
       const title = file.replace(/\(revised\)/i, '').replace(/\.docx$/i, '').trim();
       const wordCount = text.split(' ').length;
       
+      console.log(`Generating moral lesson for ${title}...`);
+      const moralLesson = await getMoralLesson(text);
+      await delay(4000); // 4 second delay to avoid rate limits
+      
       const storyIndex = {
         id,
         slug,
         title,
         englishTitle: title,
         fullText: text,
+        moralLesson,
         chunks: chunkData
       };
       
@@ -149,6 +188,7 @@ async function main() {
         englishTitle: title,
         category: "Prophets", 
         wordCount,
+        moralLesson,
         mtime
       });
       

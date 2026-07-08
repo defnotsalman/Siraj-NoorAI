@@ -184,6 +184,29 @@ function StoryDetails() {
           >
             {story.content}
           </div>
+
+          {/* MORAL LESSON */}
+          {story.moralLesson && (
+            <div className="mt-16 bg-gradient-to-br from-emerald-900/40 to-emerald-800/20 border border-emerald-500/30 rounded-3xl p-8 md:p-10 shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl"></div>
+              
+              <div className="flex items-center gap-4 mb-6 relative z-10">
+                <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-2xl shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                  💡
+                </div>
+                <h3 className="text-xl md:text-2xl font-bold text-emerald-400 tracking-wide uppercase text-shadow-sm">
+                  Moral Lesson
+                </h3>
+              </div>
+              
+              <p 
+                dir="rtl" 
+                className="text-right font-nastaliq text-[1.8rem] md:text-[2.2rem] leading-[3rem] md:leading-[4rem] text-emerald-100 relative z-10"
+              >
+                {story.moralLesson}
+              </p>
+            </div>
+          )}
         </div>
       </main>
 
