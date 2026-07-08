@@ -168,7 +168,7 @@ function StoryDetails() {
         {/* AUDIO PLAYER */}
         {showAudio && (
           <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
-            <AudioPlayer storyId={story.id} />
+            <AudioPlayer text={story.content} />
           </div>
         )}
 

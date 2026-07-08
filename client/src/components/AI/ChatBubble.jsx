@@ -2,6 +2,9 @@ import { User, Sparkles } from "lucide-react";
 
 function ChatBubble({ message, sender }) {
   const isUser = sender === "user";
+  
+  // Detect if the message contains Arabic/Urdu characters
+  const isUrdu = /[\u0600-\u06FF]/.test(message);
 
   return (
     <div className={`flex gap-3 mb-6 ${isUser ? "justify-end" : "justify-start"} items-end`}>
@@ -13,11 +16,12 @@ function ChatBubble({ message, sender }) {
       )}
 
       <div
+        dir={isUrdu ? "rtl" : "ltr"}
         className={`
           max-w-[85%] md:max-w-[75%]
           px-5 md:px-6
           py-3 md:py-4
-          text-base md:text-lg leading-relaxed
+          ${isUrdu ? 'font-nastaliq text-2xl md:text-3xl leading-[1.8] md:leading-[2]' : 'text-base md:text-lg leading-relaxed'}
           ${
             isUser
               ? "bg-gradient-to-br from-amber-400 to-amber-500 text-slate-900 rounded-[2rem] rounded-br-sm shadow-[0_10px_25px_rgba(245,158,11,0.2)] font-medium border border-amber-300"
