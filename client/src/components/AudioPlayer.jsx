@@ -1,106 +1,51 @@
-import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Square } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { getStoryAudioUrl } from '../services/speech';
+import { Play, Pause, AlertTriangle } from 'lucide-react';
 
-function AudioPlayer({ text }) {
+function AudioPlayer({ storyId }) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
-  const chunkIndexRef = useRef(0);
-  const chunksRef = useRef([]);
+  const [error, setError] = useState(false);
+  
+  const audioRef = useRef(null);
 
-  // Initialize voices and cleanup
   useEffect(() => {
-    const loadVoices = () => {
-      window.speechSynthesis.getVoices();
-    };
-    loadVoices();
-    
-    // Chrome needs this event to load voices reliably
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-      speechSynthesis.onvoiceschanged = loadVoices;
+    // Reset state if storyId changes
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setError(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.load();
     }
-
-    return () => {
-      window.speechSynthesis.cancel();
-    };
-  }, []);
-
-  const getVoice = () => {
-    const voices = window.speechSynthesis.getVoices();
-    // 1. Try Urdu
-    let voice = voices.find(v => v.lang.toLowerCase().includes('ur'));
-    // 2. Try Arabic (can read the script)
-    if (!voice) voice = voices.find(v => v.lang.toLowerCase().includes('ar'));
-    // 3. Fallback to default
-    if (!voice) voice = voices.find(v => v.default) || voices[0];
-    return voice;
-  };
-
-  const splitText = (fullText) => {
-    // Split text by Urdu period (۔), English period (.), or newlines to prevent long-text silent crashes
-    return fullText
-      .split(/[\n۔.]+/)
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-  };
-
-  const playNextChunk = () => {
-    if (chunkIndexRef.current >= chunksRef.current.length) {
-      setIsPlaying(false);
-      return;
-    }
-
-    const chunk = chunksRef.current[chunkIndexRef.current];
-    const utterance = new SpeechSynthesisUtterance(chunk);
-    
-    const voice = getVoice();
-    if (voice) {
-      utterance.voice = voice;
-    } else {
-      utterance.lang = 'ur-PK'; 
-    }
-    
-    utterance.rate = playbackRate;
-
-    utterance.onend = () => {
-      chunkIndexRef.current += 1;
-      // Play next chunk
-      setTimeout(playNextChunk, 100);
-    };
-
-    utterance.onerror = (e) => {
-      console.error("Speech synthesis error", e);
-      // Some browsers throw interrupted errors when paused/cancelled, we only stop if it's playing
-      if (e.error !== 'interrupted' && e.error !== 'canceled') {
-        setIsPlaying(false);
-      }
-    };
-
-    window.speechSynthesis.speak(utterance);
-    setIsPlaying(true);
-  };
+  }, [storyId]);
 
   const togglePlayPause = () => {
     if (isPlaying) {
-      window.speechSynthesis.pause();
-      setIsPlaying(false);
+      audioRef.current.pause();
     } else {
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-        setIsPlaying(true);
-      } else {
-        // Start fresh
-        window.speechSynthesis.cancel();
-        chunksRef.current = splitText(text);
-        chunkIndexRef.current = 0;
-        playNextChunk();
-      }
+      audioRef.current.play().catch(e => {
+        console.error("Audio playback failed", e);
+        setError(true);
+      });
     }
+    setIsPlaying(!isPlaying);
   };
 
-  const stop = () => {
-    window.speechSynthesis.cancel();
-    setIsPlaying(false);
-    chunkIndexRef.current = chunksRef.current.length; // End it
+  const onTimeUpdate = () => {
+    setCurrentTime(audioRef.current.currentTime);
+  };
+
+  const onLoadedMetadata = () => {
+    setDuration(audioRef.current.duration);
+  };
+
+  const onSeek = (e) => {
+    const time = Number(e.target.value);
+    audioRef.current.currentTime = time;
+    setCurrentTime(time);
   };
 
   const changeSpeed = () => {
@@ -109,19 +54,39 @@ function AudioPlayer({ text }) {
     else if (playbackRate === 1.25) newRate = 0.75;
     
     setPlaybackRate(newRate);
-    
-    // Restart utterance if speaking to apply rate change
-    if (isPlaying) {
-       window.speechSynthesis.cancel();
-       setTimeout(() => {
-          playNextChunk();
-       }, 50);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = newRate;
     }
   };
+
+  const formatTime = (time) => {
+    if (isNaN(time)) return "00:00";
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (error) {
+    return (
+      <div className="bg-rose-500/10 border border-rose-500/30 rounded-3xl p-6 mt-6 flex items-center justify-center gap-3 text-rose-300">
+        <AlertTriangle />
+        <span>Oops! The audio for this story isn't ready yet.</span>
+      </div>
+    );
+  }
 
   return (
     <div className="glass-panel rounded-3xl p-6 mt-6 flex flex-col md:flex-row items-center gap-6 shadow-xl border border-white/5">
       
+      <audio
+        ref={audioRef}
+        src={getStoryAudioUrl(storyId)}
+        onTimeUpdate={onTimeUpdate}
+        onLoadedMetadata={onLoadedMetadata}
+        onEnded={() => setIsPlaying(false)}
+        onError={() => setError(true)}
+      />
+
       {/* Play/Pause Button */}
       <button 
         onClick={togglePlayPause}
@@ -130,20 +95,38 @@ function AudioPlayer({ text }) {
         {isPlaying ? <Pause fill="currentColor" size={24} /> : <Play fill="currentColor" size={24} className="ml-1" />}
       </button>
 
-      {/* Stop Button */}
-      <button 
-        onClick={stop}
-        className="bg-white/10 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-rose-500 hover:text-white transition-colors shrink-0 shadow-lg border border-white/5"
-      >
-        <Square fill="currentColor" size={16} />
-      </button>
-
-      {/* Status Bar */}
-      <div className="flex-1 w-full flex flex-col justify-center items-start px-2 text-center md:text-left">
-        <h3 className="text-amber-400 font-bold mb-1 w-full">Story Reader</h3>
-        <p className="text-slate-400 text-sm w-full">
-          {isPlaying ? "Playing aloud..." : window.speechSynthesis.paused ? "Paused" : "Ready to listen"}
-        </p>
+      {/* Progress Bar & Timers */}
+      <div className="flex-1 w-full flex items-center gap-4">
+        <span className="text-slate-400 font-mono w-12 text-right text-sm">
+          {formatTime(currentTime)}
+        </span>
+        
+        <div className="relative flex-1 h-3 flex items-center group">
+          <input 
+            type="range" 
+            min="0" 
+            max={duration || 100} 
+            value={currentTime} 
+            onChange={onSeek}
+            className="absolute w-full h-full opacity-0 cursor-pointer z-10"
+          />
+          {/* Custom track */}
+          <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-amber-400 to-amber-500"
+              style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
+            />
+          </div>
+          {/* Custom thumb */}
+          <div 
+            className="absolute h-4 w-4 bg-white rounded-full shadow border-2 border-amber-500 pointer-events-none group-hover:scale-125 transition-transform"
+            style={{ left: `calc(${(currentTime / (duration || 1)) * 100}% - 8px)` }}
+          />
+        </div>
+        
+        <span className="text-slate-400 font-mono w-12 text-left text-sm">
+          {formatTime(duration)}
+        </span>
       </div>
 
       {/* Speed Toggle */}
