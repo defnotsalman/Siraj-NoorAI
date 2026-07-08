@@ -39,33 +39,34 @@ Return the result as a raw JSON object (NO markdown backticks, NO extra text) ma
 }`;
 
 async function generateQuizForStory(story, storyText) {
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-  if (!geminiApiKey) {
-    throw new Error("GEMINI_API_KEY is not defined in .env");
+  const groqApiKey = process.env.GROQ_API_KEY;
+  if (!groqApiKey) {
+    throw new Error("GROQ_API_KEY is not defined in .env");
   }
 
   const userPrompt = `Story ID: ${story.id}\n\nSTORY TEXT:\n"""\n${storyText}\n"""\n\nGenerate the JSON quiz now.`;
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+  const response = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${groqApiKey}`
+    },
     body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: systemPrompt }]
-      },
-      contents: [
-        { role: 'user', parts: [{ text: userPrompt }] }
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
       ],
-      generationConfig: {
-        responseMimeType: "application/json"
-      }
+      response_format: { type: "json_object" },
+      temperature: 0.2
     })
   });
 
   const data = await response.json();
   if (data.error) throw new Error(data.error.message);
 
-  let rawContent = data.candidates[0].content.parts[0].text;
+  let rawContent = data.choices[0].message.content;
   
   // Clean up potential markdown formatting if the model still outputs it despite responseMimeType
   rawContent = rawContent.replace(/^```json\s*/i, '').replace(/\s*```$/i, '');

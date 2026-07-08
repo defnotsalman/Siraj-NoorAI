@@ -7,7 +7,7 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
-[![Gemini](https://img.shields.io/badge/Google-Gemini_AI-4285F4?logo=google&logoColor=white)](https://deepmind.google/technologies/gemini/)
+[![Groq](https://img.shields.io/badge/Groq-AI_Inference-F55036?logo=groq&logoColor=white)](https://groq.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38B2AC?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
@@ -40,7 +40,7 @@ It is built for two kinds of people at once. Children around five to ten years o
 | Frontend | React 19, Vite, Tailwind CSS v4, React Router v7 |
 | Backend | Node.js and Express |
 | Database and Auth | Supabase, using Postgres, Auth, and Row Level Security |
-| AI and Chat | Google Gemini API (gemini-2.5-flash) |
+| AI and Chat | Groq API (llama-3.3-70b-versatile) |
 | Text to Speech | Google Cloud TTS (Free Node API) for Urdu voices |
 | Document Parsing | mammoth for docx files, pdf-parse for PDFs |
 
@@ -52,7 +52,7 @@ You can add screenshots or a short demo clip here once the interface is finished
 
 ### What you will need
 
-You will need Node.js version 18 or later, a free Supabase project, and a Google Gemini API key.
+You will need Node.js version 18 or later, a free Supabase project, and a Groq API key.
 
 ### Installing the project
 
@@ -81,7 +81,7 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 Create `.env` inside the `server` folder with the following:
 
 ```env
-GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEY=your_groq_api_key
 ```
 
 Please keep both of these files private and out of version control. They are already listed in `.gitignore`.
@@ -100,7 +100,7 @@ npm run build:quizzes
 npm run build:audio
 ```
 
-These three commands read the story text, build the search index the AI companion uses, generate a quiz using Gemini, and generate the narrated audio using Google TTS.
+These three commands read the story text, build the search index the AI companion uses, generate a quiz using Groq, and generate the narrated audio using Google TTS.
 
 ### Running the app
 

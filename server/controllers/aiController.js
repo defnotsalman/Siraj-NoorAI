@@ -85,39 +85,47 @@ RULES YOU MUST FOLLOW:
 7. You may ask the child a gentle follow-up question to encourage reflection.
 8. Always refer to prophets with "(AS)" and use respectful honorifics.`;
 
-    // Format for Gemini API
-    const geminiMessages = [
+    // Format for Groq API
+    const groqMessages = [
+      { role: 'system', content: systemPrompt },
       ...conversationHistory.map(m => ({ 
-        role: m.sender === 'ai' ? 'model' : 'user', 
-        parts: [{ text: m.message }] 
+        role: m.sender === 'ai' ? 'assistant' : 'user', 
+        content: m.message 
       })),
-      { role: 'user', parts: [{ text: question }] }
+      { role: 'user', content: question }
     ];
     
     // Trim history to prevent huge token usage
-    if (geminiMessages.length > 11) {
-       geminiMessages.splice(0, geminiMessages.length - 11);
+    if (groqMessages.length > 12) {
+       // Keep system prompt, trim the middle history
+       const sys = groqMessages[0];
+       const trimmed = groqMessages.slice(-11);
+       groqMessages.length = 0;
+       groqMessages.push(sys, ...trimmed);
     }
 
     let answer = "I'm having a little trouble thinking right now, but let's try again soon!";
     
-    if (process.env.GEMINI_API_KEY) {
+    if (process.env.GROQ_API_KEY) {
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+        const response = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+          },
           body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: systemPrompt }]
-            },
-            contents: geminiMessages
+            model: "llama-3.3-70b-versatile",
+            messages: groqMessages,
+            temperature: 0.7,
+            max_tokens: 500
           })
         });
         const data = await response.json();
         if (data.error) throw new Error(data.error.message);
-        answer = data.candidates[0].content.parts[0].text;
+        answer = data.choices[0].message.content;
       } catch (err) {
-        console.error("Gemini API Error:", err);
+        console.error("Groq API Error:", err);
         throw err;
       }
     } else {
