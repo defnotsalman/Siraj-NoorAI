@@ -4,36 +4,79 @@ import { Play, Pause, Square } from 'lucide-react';
 function AudioPlayer({ text }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
-  const utteranceRef = useRef(null);
+  const chunkIndexRef = useRef(0);
+  const chunksRef = useRef([]);
 
-  // Initialize and cleanup
+  // Initialize voices and cleanup
   useEffect(() => {
-    // Ensure voices are loaded (Chrome sometimes needs this to be triggered)
-    window.speechSynthesis.getVoices();
+    const loadVoices = () => {
+      window.speechSynthesis.getVoices();
+    };
+    loadVoices();
+    
+    // Chrome needs this event to load voices reliably
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
     return () => {
       window.speechSynthesis.cancel();
     };
   }, []);
 
-  const initUtterance = () => {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    
-    // Attempt to find an Urdu voice
+  const getVoice = () => {
     const voices = window.speechSynthesis.getVoices();
-    const urduVoice = voices.find(v => v.lang.toLowerCase().includes('ur'));
-    if (urduVoice) {
-      utterance.voice = urduVoice;
-    } else {
-      utterance.lang = 'ur-PK'; // Fallback hint
+    // 1. Try Urdu
+    let voice = voices.find(v => v.lang.toLowerCase().includes('ur'));
+    // 2. Try Arabic (can read the script)
+    if (!voice) voice = voices.find(v => v.lang.toLowerCase().includes('ar'));
+    // 3. Fallback to default
+    if (!voice) voice = voices.find(v => v.default) || voices[0];
+    return voice;
+  };
+
+  const splitText = (fullText) => {
+    // Split text by Urdu period (۔), English period (.), or newlines to prevent long-text silent crashes
+    return fullText
+      .split(/[\n۔.]+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+  };
+
+  const playNextChunk = () => {
+    if (chunkIndexRef.current >= chunksRef.current.length) {
+      setIsPlaying(false);
+      return;
     }
 
+    const chunk = chunksRef.current[chunkIndexRef.current];
+    const utterance = new SpeechSynthesisUtterance(chunk);
+    
+    const voice = getVoice();
+    if (voice) {
+      utterance.voice = voice;
+    } else {
+      utterance.lang = 'ur-PK'; 
+    }
+    
     utterance.rate = playbackRate;
-    
-    utterance.onend = () => setIsPlaying(false);
-    utterance.onerror = () => setIsPlaying(false);
-    
-    utteranceRef.current = utterance;
+
+    utterance.onend = () => {
+      chunkIndexRef.current += 1;
+      // Play next chunk
+      setTimeout(playNextChunk, 100);
+    };
+
+    utterance.onerror = (e) => {
+      console.error("Speech synthesis error", e);
+      // Some browsers throw interrupted errors when paused/cancelled, we only stop if it's playing
+      if (e.error !== 'interrupted' && e.error !== 'canceled') {
+        setIsPlaying(false);
+      }
+    };
+
+    window.speechSynthesis.speak(utterance);
+    setIsPlaying(true);
   };
 
   const togglePlayPause = () => {
@@ -41,20 +84,23 @@ function AudioPlayer({ text }) {
       window.speechSynthesis.pause();
       setIsPlaying(false);
     } else {
-      if (window.speechSynthesis.paused && utteranceRef.current) {
+      if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
+        setIsPlaying(true);
       } else {
-        initUtterance();
-        window.speechSynthesis.speak(utteranceRef.current);
+        // Start fresh
+        window.speechSynthesis.cancel();
+        chunksRef.current = splitText(text);
+        chunkIndexRef.current = 0;
+        playNextChunk();
       }
-      setIsPlaying(true);
     }
   };
 
   const stop = () => {
     window.speechSynthesis.cancel();
     setIsPlaying(false);
-    utteranceRef.current = null;
+    chunkIndexRef.current = chunksRef.current.length; // End it
   };
 
   const changeSpeed = () => {
@@ -68,9 +114,7 @@ function AudioPlayer({ text }) {
     if (isPlaying) {
        window.speechSynthesis.cancel();
        setTimeout(() => {
-          initUtterance();
-          utteranceRef.current.rate = newRate;
-          window.speechSynthesis.speak(utteranceRef.current);
+          playNextChunk();
        }, 50);
     }
   };
