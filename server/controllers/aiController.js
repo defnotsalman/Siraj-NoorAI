@@ -1,0 +1,136 @@
+import fs from 'fs-extra';
+import path from 'path';
+import OpenAI from 'openai';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const INDEX_DIR = path.join(__dirname, '..', 'output', 'stories-index');
+const MANIFEST_FILE = path.join(__dirname, '..', 'output', 'stories-manifest.json');
+
+// Simple in-memory cache for loaded stories
+const storyCache = new Map();
+
+// Cosine similarity
+function cosineSimilarity(vecA, vecB) {
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < vecA.length; i++) {
+    dotProduct += vecA[i] * vecB[i];
+    normA += vecA[i] * vecA[i];
+    normB += vecB[i] * vecB[i];
+  }
+  if (normA === 0 || normB === 0) return 0;
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+export const askAi = async (req, res) => {
+  const { storyId, question, conversationHistory = [] } = req.body;
+
+  if (!storyId || !question) {
+    return res.status(200).json({ 
+      answer: "Please select a story first before asking me questions! I am a Story AI. 📚" 
+    });
+  }
+  
+  // Lightweight safety filter
+  const badWords = ['badword', 'explicit', 'address', 'phone number']; // simplified
+  const lowerQ = question.toLowerCase();
+  if (badWords.some(w => lowerQ.includes(w))) {
+    return res.json({ answer: "I'm a friendly AI for Islamic stories! Let's talk about the story instead 😊." });
+  }
+
+  try {
+    let story;
+    if (storyCache.has(storyId)) {
+      story = storyCache.get(storyId);
+    } else {
+      const manifest = await fs.readJson(MANIFEST_FILE);
+      const storyMeta = manifest.find(s => s.id === storyId);
+      if (!storyMeta) {
+        return res.status(404).json({ error: "Story not found in manifest." });
+      }
+
+      const storyPath = path.join(INDEX_DIR, `${storyMeta.slug}.json`);
+      if (!await fs.pathExists(storyPath)) {
+        return res.status(404).json({ error: "Story index file not found." });
+      }
+      story = await fs.readJson(storyPath);
+      storyCache.set(storyId, story);
+    }
+
+    let retrievedContext = story.fullText;
+    
+    // Fallback to top chunks since ingestion was run with dummy embeddings
+    if (story.chunks && story.chunks.length > 5) {
+       retrievedContext = story.chunks.slice(0, 3).map(c => c.text).join('\n\n');
+    }
+
+    const systemPrompt = `You are "Noor", a gentle, patient AI companion inside the NoorKids app, helping a child understand ONE specific Islamic story: "${story.title}".
+
+STORY CONTEXT (this is your only source of truth for this story):
+"""
+${retrievedContext}
+"""
+
+RULES YOU MUST FOLLOW:
+1. Answer ONLY using the story context above. If the child asks an irrelevant question or something the story doesn't cover, you MUST simply reply with: "This is irrelevant to the story." Do not try to relate it to the story, and do not invent details.
+2. Speak like a warm, encouraging teacher talking to a child aged 5–10: short sentences, simple vocabulary, no complex theological jargon. Use gentle emoji sparingly (🌙✨📖).
+3. Reply in the SAME language the child used (Urdu or English). If mixed, mirror the mix.
+4. If asked about topics unrelated to this story or to Islamic values generally (violence, other religions, personal/private user data, anything scary, adult, or companies/brands), you MUST reply: "This is irrelevant to the story."
+5. Never discuss sensitive theological disputes.
+6. Keep answers short: 2–5 sentences unless the child explicitly asks for more detail.
+7. You may ask the child a gentle follow-up question to encourage reflection.
+8. Always refer to prophets with "(AS)" and use respectful honorifics.`;
+
+    // Format for Gemini API
+    const geminiMessages = [
+      ...conversationHistory.map(m => ({ 
+        role: m.sender === 'ai' ? 'model' : 'user', 
+        parts: [{ text: m.message }] 
+      })),
+      { role: 'user', parts: [{ text: question }] }
+    ];
+    
+    // Trim history to prevent huge token usage
+    if (geminiMessages.length > 11) {
+       geminiMessages.splice(0, geminiMessages.length - 11);
+    }
+
+    let answer = "I'm having a little trouble thinking right now, but let's try again soon!";
+    
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: systemPrompt }]
+            },
+            contents: geminiMessages
+          })
+        });
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message);
+        answer = data.candidates[0].content.parts[0].text;
+      } catch (err) {
+        console.error("Gemini API Error:", err);
+        throw err;
+      }
+    } else {
+       answer = `(Dummy API Mode) According to the story "${story.title}", here is what I found: ${retrievedContext.substring(0, 100)}...`;
+    }
+
+    // Log conversation simply
+    console.log(`[CHAT LOG] Story: ${storyId} | Q: ${question} | A: ${answer.substring(0,50)}...`);
+
+    res.json({ answer, storyId });
+  } catch (error) {
+    console.error('AI Controller Error:', error);
+    // Return 200 so the frontend displays the error in the chat bubble!
+    res.status(200).json({ answer: `[DEBUG BACKEND ERROR]: ${error.message || error}`, storyId });
+  }
+};

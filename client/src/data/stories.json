@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "title": "حضرت آدم علیہ السلام",
+    "englishTitle": "Hazrat Adam (A.S.)",
+    "category": "Prophets",
+    "difficulty": "Easy",
+    "cover": "",
+    "description": "The story of the first Prophet.",
+    "content": "یہاں مکمل اردو کہانی آئے گی۔",
+    "moral": "ہمیشہ اللہ تعالیٰ کی اطاعت کریں۔",
+    "color": "#FFD166"
+  },
+  {
+    "id": 2,
+    "title": "حضرت نوح علیہ السلام",
+    "englishTitle": "Hazrat Nuh (A.S.)",
+    "category": "Prophets",
+    "difficulty": "Easy",
+    "cover": "",
+    "description": "The Ark and the Great Flood.",
+    "content": "یہاں مکمل اردو کہانی آئے گی۔",
+    "moral": "صبر کامیابی کی کنجی ہے۔",
+    "color": "#06D6A0"
+  }
+]
