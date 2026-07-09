@@ -74,7 +74,7 @@ function chunkUrduText(text, maxChars = 4000) {
   return chunks;
 }
 
-async function processStory(storyId, slug, fullText, force = false) {
+export async function generateAudioForStory(storyId, slug, fullText, force = false) {
   const outputFile = path.join(AUDIO_DIR, `${storyId}.mp3`);
   
   if (!force && await fs.pathExists(outputFile)) {
@@ -99,6 +99,32 @@ async function processStory(storyId, slug, fullText, force = false) {
   
   console.log(`[SUCCESS] Saved ${storyId}.mp3`);
   return { status: 'success', chars: charCount };
+}
+
+export async function generateAudio(storyId) {
+  await fs.ensureDir(AUDIO_DIR);
+  
+  if (!await fs.pathExists(MANIFEST_FILE)) {
+    throw new Error("stories-manifest.json not found.");
+  }
+  
+  const manifest = await fs.readJson(MANIFEST_FILE);
+  const story = manifest.find(s => s.id === storyId || s.slug === storyId);
+  
+  if (!story) {
+    throw new Error(`Story ${storyId} not found in manifest.`);
+  }
+
+  const indexPath = path.join(INDEX_DIR, `${story.slug}.json`);
+  if (!await fs.pathExists(indexPath)) {
+    throw new Error("Story index file missing");
+  }
+  
+  const indexData = await fs.readJson(indexPath);
+  const storyText = indexData.fullText;
+  
+  const result = await generateAudioForStory(story.id, story.slug, storyText, true); // Admin generation forces update
+  return result;
 }
 
 async function main() {
@@ -127,7 +153,7 @@ async function main() {
 
     const storyData = await fs.readJson(indexFile);
     try {
-      const result = await processStory(story.id, story.slug, storyData.fullText, force);
+      const result = await generateAudioForStory(story.id, story.slug, storyData.fullText, force);
       if (result.status === 'success') successCount++;
       if (result.status === 'skipped') skipCount++;
       totalCharsUsed += result.chars;
@@ -144,4 +170,6 @@ async function main() {
   console.log(`\nCumulative characters used this run: ${totalCharsUsed}`);
 }
 
-main().catch(console.error);
+if (process.argv[1] === __filename) {
+  main().catch(console.error);
+}

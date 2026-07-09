@@ -4,7 +4,7 @@ import { loginUser, sendPasswordResetEmail } from '../../services/auth';
 import { getUserProfile } from '../../services/profile';
 import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
-export default function LoginForm() {
+export default function LoginForm({ isAdminMode = false }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -33,10 +33,20 @@ export default function LoginForm() {
       const user = userCredential.user;
       
       const profile = await getUserProfile(user.id);
-      if (profile && !profile.profileComplete) {
-        navigate('/complete-profile');
+      
+      if (isAdminMode) {
+        if (!profile?.is_admin) {
+          throw new Error("You do not have administrative privileges.");
+        }
+        navigate('/admin');
       } else {
-        navigate('/');
+        if (profile?.is_admin) {
+           navigate('/admin');
+        } else if (profile && !profile.profileComplete) {
+          navigate('/complete-profile');
+        } else {
+          navigate('/');
+        }
       }
       
     } catch (err) {
@@ -144,12 +154,16 @@ export default function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="relative overflow-hidden w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-900 py-3 rounded-xl transition-all font-bold text-[15px] shadow-[0_4px_14px_0_rgba(245,158,11,0.39)] disabled:opacity-50 mt-1 flex justify-center items-center gap-2 group/btn"
+          className={`relative overflow-hidden w-full py-3 rounded-xl transition-all font-bold text-[15px] disabled:opacity-50 mt-1 flex justify-center items-center gap-2 group/btn ${
+            isAdminMode 
+              ? "bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white shadow-[0_4px_14px_0_rgba(99,102,241,0.39)]"
+              : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-900 shadow-[0_4px_14px_0_rgba(245,158,11,0.39)]"
+          }`}
         >
           {loading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
-            "Log In"
+            isAdminMode ? "Admin Log In" : "Log In"
           )}
         </button>
       </form>

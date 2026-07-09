@@ -17,6 +17,11 @@ function ProtectedRoute({ children }) {
     return <Navigate to="/login" replace />;
   }
 
+  // If the user is an admin, they should not access the user portal.
+  if (profile?.is_admin) {
+    return <Navigate to="/admin" replace />;
+  }
+
   // Profile completion redirect logic:
   // If a user has registered but hasn't completed their profile, we force them to /complete-profile.
   // We check location.pathname to avoid an infinite redirect loop if they are already on that page.

@@ -111,6 +111,77 @@ async function getEmbeddings(chunks) {
   return chunks.map(() => new Array(1536).fill(0));
 }
 
+// Exportable function to update the global manifest
+export async function updateManifest(slug, newStoryData) {
+  let existingManifest = [];
+  if (await fs.pathExists(MANIFEST_FILE)) {
+    existingManifest = await fs.readJson(MANIFEST_FILE);
+  }
+  const manifestMap = new Map(existingManifest.map(m => [m.slug, m]));
+  
+  const existing = manifestMap.get(slug);
+  manifestMap.set(slug, {
+    ...existing,
+    ...newStoryData
+  });
+  
+  const newManifest = Array.from(manifestMap.values());
+  await fs.writeJson(MANIFEST_FILE, newManifest, { spaces: 2 });
+  return manifestMap.get(slug);
+}
+
+// Core processing logic extracted for reuse by Admin API
+export async function processStory(fileBuffer, originalFilename) {
+  await fs.ensureDir(INDEX_DIR);
+  
+  const slug = generateSlug(originalFilename);
+  const id = crypto.createHash('md5').update(slug).digest('hex').slice(0, 10);
+  
+  const result = await mammoth.extractRawText({ buffer: fileBuffer });
+  let text = result.value.replace(/\s+/g, ' ').trim();
+  
+  const chunks = chunkText(text);
+  const embeddings = await getEmbeddings(chunks);
+  
+  const chunkData = chunks.map((c, i) => ({
+    text: c,
+    embedding: embeddings[i]
+  }));
+
+  const title = originalFilename.replace(/\(revised\)/i, '').replace(/\.docx$/i, '').trim();
+  const wordCount = text.split(' ').length;
+  
+  console.log(`Generating moral lesson for ${title}...`);
+  const moralLesson = await getMoralLesson(text);
+  
+  const storyIndex = {
+    id,
+    slug,
+    title,
+    englishTitle: title,
+    fullText: text,
+    moralLesson,
+    chunks: chunkData
+  };
+  
+  await fs.writeJson(path.join(INDEX_DIR, `${slug}.json`), storyIndex);
+  
+  const manifestData = {
+    id,
+    slug,
+    title,
+    englishTitle: title,
+    category: "Prophets", 
+    wordCount,
+    moralLesson,
+    mtime: Date.now()
+  };
+  
+  const updatedManifest = await updateManifest(slug, manifestData);
+  return updatedManifest;
+}
+
+// Keep the CLI functional
 async function main() {
   await fs.ensureDir(INDEX_DIR);
   
@@ -136,13 +207,11 @@ async function main() {
       const size = stat.size;
       
       if (size > 5 * 1024 * 1024) {
-        console.log(`Skipping ${file} because it is too large (${(size/1024/1024).toFixed(2)} MB)`);
+        console.log(`Skipping ${file} because it is too large`);
         continue;
       }
       
       const slug = generateSlug(file);
-      const id = crypto.createHash('md5').update(slug).digest('hex').slice(0, 10);
-      
       const existing = manifestMap.get(slug);
       if (existing && existing.mtime === mtime && await fs.pathExists(path.join(INDEX_DIR, `${slug}.json`))) {
         skipped++;
@@ -150,47 +219,14 @@ async function main() {
       }
       
       console.log(`Processing ${file}...`);
+      const fileBuffer = await fs.readFile(filePath);
       
-      const result = await mammoth.extractRawText({ path: filePath });
-      let text = result.value.replace(/\s+/g, ' ').trim();
+      // Delay to avoid rate limit for bulk CLI run
+      if (processed > 0) await delay(4000); 
       
-      const chunks = chunkText(text);
-      const embeddings = await getEmbeddings(chunks);
-      
-      const chunkData = chunks.map((c, i) => ({
-        text: c,
-        embedding: embeddings[i]
-      }));
-
-      const title = file.replace(/\(revised\)/i, '').replace(/\.docx$/i, '').trim();
-      const wordCount = text.split(' ').length;
-      
-      console.log(`Generating moral lesson for ${title}...`);
-      const moralLesson = await getMoralLesson(text);
-      await delay(4000); // 4 second delay to avoid rate limits
-      
-      const storyIndex = {
-        id,
-        slug,
-        title,
-        englishTitle: title,
-        fullText: text,
-        moralLesson,
-        chunks: chunkData
-      };
-      
-      await fs.writeJson(path.join(INDEX_DIR, `${slug}.json`), storyIndex);
-      
-      manifestMap.set(slug, {
-        id,
-        slug,
-        title,
-        englishTitle: title,
-        category: "Prophets", 
-        wordCount,
-        moralLesson,
-        mtime
-      });
+      const updated = await processStory(fileBuffer, file);
+      // Override mtime for local CLI caching
+      await updateManifest(slug, { mtime });
       
       processed++;
     } catch (err) {
@@ -199,9 +235,6 @@ async function main() {
     }
   }
 
-  const newManifest = Array.from(manifestMap.values());
-  await fs.writeJson(MANIFEST_FILE, newManifest, { spaces: 2 });
-  
   console.log(`\n=== Build Summary ===`);
   console.log(`Processed: ${processed}`);
   console.log(`Skipped (unchanged): ${skipped}`);
@@ -211,4 +244,7 @@ async function main() {
   }
 }
 
-main().catch(console.error);
+// Only run main if executed directly via CLI
+if (process.argv[1] === __filename) {
+  main().catch(console.error);
+}

@@ -20,9 +20,35 @@ import ProtectedRoute from "./components/Auth/ProtectedRoute";
 import CompleteProfileForm from "./components/Auth/CompleteProfileForm";
 import { AuthProvider } from "./context/AuthContext";
 
+// Admin
+import AdminLogin from "./admin/AdminLogin";
+import AdminRoute from "./admin/AdminRoute";
+import AdminDashboard from "./admin/AdminDashboard";
+import AdminStories from "./admin/AdminStories";
+import AdminStoryDetail from "./admin/AdminStoryDetail";
+import AdminUsers from "./admin/AdminUsers";
+import AdminUserDetail from "./admin/AdminUserDetail";
+import AdminChatLogs from "./admin/AdminChatLogs";
+
 function AppContent() {
   const location = useLocation();
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/admin-login';
+  const isAdminPage = location.pathname.startsWith('/admin') && location.pathname !== '/admin-login';
+
+  if (isAdminPage) {
+    return (
+      <Routes>
+        <Route path="/admin" element={<AdminRoute />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="stories" element={<AdminStories />} />
+          <Route path="stories/:storyId" element={<AdminStoryDetail />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="users/:userId" element={<AdminUserDetail />} />
+          <Route path="chat-logs" element={<AdminChatLogs />} />
+        </Route>
+      </Routes>
+    );
+  }
 
   return (
     <>
@@ -47,6 +73,7 @@ function AppContent() {
           {/* Authentication */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
 
           {/* Protected Routes */}
           <Route

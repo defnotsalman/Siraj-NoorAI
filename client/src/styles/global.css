@@ -15,6 +15,16 @@
   --animate-shake: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
   --animate-fade-in-up: fade-in-up 0.6s ease-out forwards;
   --animate-pulse-slow: pulse-slow 4s ease-in-out infinite;
+
+  /* Admin Portal Custom Theme Colors */
+  --color-admin-bg: var(--admin-bg);
+  --color-admin-surface: var(--admin-surface);
+  --color-admin-surface-hover: var(--admin-surface-hover);
+  --color-admin-border: var(--admin-border);
+  --color-admin-text-primary: var(--admin-text-primary);
+  --color-admin-text-secondary: var(--admin-text-secondary);
+  --color-admin-accent: var(--admin-accent);
+  --color-admin-accent-bg: var(--admin-accent-bg);
 }
 
 @keyframes shimmer {
@@ -40,16 +50,27 @@
   50% { opacity: 0.8; transform: scale(1.05); }
 }
 
+@custom-variant dark (&:is(.dark *));
+
 body {
     margin: 0;
     padding: 0;
+    background-color: #f8fafc; /* Light mode default bg (slate-50) */
+    color: #0f172a; /* Light mode default text (slate-900) */
+    font-family: var(--font-body);
+    /* Soft ambient background for light mode */
+    background-image: radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.05), transparent 50%),
+                      radial-gradient(circle at 85% 30%, rgba(245, 158, 11, 0.05), transparent 50%);
+    background-attachment: fixed;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.dark body {
     background-color: var(--color-midnight-900);
     color: var(--color-starlight);
-    font-family: var(--font-body);
-    /* Soft ambient background */
+    /* Soft ambient background for dark mode */
     background-image: radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.1), transparent 50%),
                       radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.1), transparent 50%);
-    background-attachment: fixed;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -96,3 +117,26 @@ h1, h2, h3, h4, h5, h6 {
 .tajweed.qalaqah { color: #f59e0b; } /* Orange */
 .tajweed.madd_2, .tajweed.madd_246, .tajweed.madd_4, .tajweed.madd_45, .tajweed.madd_6, .tajweed.madd { color: #ef4444; } /* Red */
 .tajweed.lam_shamsiyyah, .tajweed.hamzat_wasl { color: #64748b; } /* Slate for silent letters */
+
+/* Admin Portal Theme Variables */
+.admin-portal {
+  --admin-bg: #f8fafc;
+  --admin-surface: #ffffff;
+  --admin-surface-hover: #f1f5f9;
+  --admin-border: #e2e8f0;
+  --admin-text-primary: #0f172a;
+  --admin-text-secondary: #64748b;
+  --admin-accent: #4f46e5;
+  --admin-accent-bg: #eef2ff;
+}
+
+.admin-portal.admin-dark {
+  --admin-bg: #020617;
+  --admin-surface: #0f172a;
+  --admin-surface-hover: #1e293b;
+  --admin-border: rgba(255, 255, 255, 0.05);
+  --admin-text-primary: #f8fafc;
+  --admin-text-secondary: #94a3b8;
+  --admin-accent: #818cf8;
+  --admin-accent-bg: rgba(99, 102, 241, 0.15);
+}

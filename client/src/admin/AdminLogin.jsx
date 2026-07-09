@@ -3,7 +3,7 @@ import LoginForm from "../components/Auth/LoginForm";
 import { Moon, Sparkles, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 
-function Login() {
+function AdminLogin() {
   return (
     <div className="h-screen flex items-center justify-center p-4 md:p-8 bg-[#050b18] relative overflow-hidden">
       
@@ -19,10 +19,10 @@ function Login() {
             <Moon className="text-amber-400 w-8 h-8 fill-amber-400/20 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">
-            Welcome to NoorKids
+            Admin Portal
           </h1>
           <p className="text-slate-400 text-sm">
-            Log in to continue your journey
+            Log in with administrative credentials
           </p>
         </div>
 
@@ -33,22 +33,22 @@ function Login() {
             {/* Desktop-only Title */}
             <div className="hidden lg:block mb-8">
               <h1 className="text-3xl font-bold text-white mb-2 tracking-tight flex items-center gap-3">
-                Welcome back
+                <ShieldCheck className="text-indigo-400 w-8 h-8" />
+                Admin Portal
               </h1>
               <p className="text-slate-400 text-sm">
-                Log in to continue your children's Islamic learning journey.
+                Log in with your administrative credentials to manage content and users.
               </p>
             </div>
 
-            <LoginForm />
-            
+            <LoginForm isAdminMode={true} />
+
             <div className="mt-8 pt-6 border-t border-white/5 text-center">
               <Link 
-                to="/admin-login"
+                to="/login"
                 className="text-xs text-slate-500 hover:text-indigo-400 transition-colors flex items-center justify-center gap-2 mx-auto"
               >
-                <ShieldCheck size={14} />
-                Go to Admin Portal
+                Go to User Login
               </Link>
             </div>
           </div>
@@ -91,4 +91,4 @@ function Login() {
   );
 }
 
-export default Login;
+export default AdminLogin;

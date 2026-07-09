@@ -38,7 +38,7 @@ Return the result as a raw JSON object (NO markdown backticks, NO extra text) ma
   ]
 }`;
 
-async function generateQuizForStory(story, storyText) {
+export async function generateQuizForStory(story, storyText) {
   const groqApiKey = process.env.GROQ_API_KEY;
   if (!groqApiKey) {
     throw new Error("GROQ_API_KEY is not defined in .env");
@@ -85,6 +85,43 @@ async function generateQuizForStory(story, storyText) {
   }
 
   return parsed;
+}
+
+export async function generateQuiz(storyId) {
+  await fs.ensureDir(QUIZ_DIR);
+  
+  if (!await fs.pathExists(MANIFEST_FILE)) {
+    throw new Error("stories-manifest.json not found.");
+  }
+  
+  const manifest = await fs.readJson(MANIFEST_FILE);
+  const story = manifest.find(s => s.id === storyId || s.slug === storyId);
+  
+  if (!story) {
+    throw new Error(`Story ${storyId} not found in manifest.`);
+  }
+
+  const quizPath = path.join(QUIZ_DIR, `${story.id}.json`);
+  const indexPath = path.join(INDEX_DIR, `${story.slug}.json`);
+  
+  if (!await fs.pathExists(indexPath)) {
+    throw new Error("Story index file missing");
+  }
+  
+  const indexData = await fs.readJson(indexPath);
+  const storyText = indexData.fullText;
+  const truncatedText = storyText.substring(0, 100000); 
+
+  let quizData;
+  try {
+    quizData = await generateQuizForStory(story, truncatedText);
+  } catch (err) {
+    console.warn(`⚠️ First attempt failed: ${err.message}. Retrying...`);
+    quizData = await generateQuizForStory(story, truncatedText);
+  }
+
+  await fs.writeJson(quizPath, quizData, { spaces: 2 });
+  return quizData;
 }
 
 async function run() {
@@ -143,8 +180,9 @@ async function run() {
       console.log(`   ✅ Success! Saved to ${story.id}.json`);
       generated++;
       
-      // Artificial delay to prevent aggressive rate limiting
-      await new Promise(r => setTimeout(r, 2000));
+      // Artificial delay to prevent aggressive rate limiting (Groq Free Tier has 12K TPM limit)
+      // Since each request can use 8-9k tokens, we must wait over a minute between generations.
+      await new Promise(r => setTimeout(r, 65000));
       
     } catch (error) {
       console.error(`   ❌ Failed to generate quiz for ${story.title}: ${error.message}`);
@@ -165,4 +203,6 @@ async function run() {
   }
 }
 
-run();
+if (process.argv[1] === __filename) {
+  run().catch(console.error);
+}
