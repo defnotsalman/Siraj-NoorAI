@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../supabase/supabaseClient';
-import { Loader2, Search, ChevronRight, Users, UserPlus, X } from 'lucide-react';
+import { Loader2, Search, ChevronRight, Users, UserPlus, X, Mail, User, Calendar, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAdminTheme } from './context/AdminThemeContext';
 
 const AdminUsers = () => {
+  const { adminTheme } = useAdminTheme();
+  const isDark = adminTheme === 'dark';
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -231,74 +235,104 @@ const AdminUsers = () => {
         )}
       </div>
       
-      {/* Registration Modal */}
-      {showRegisterModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[var(--admin-surface)] rounded-2xl border border-[var(--admin-border)] shadow-xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-5 border-b border-[var(--admin-border)] bg-[var(--admin-surface-hover)] shrink-0">
-              <h2 className="text-lg font-semibold text-[var(--admin-text-primary)]">Register New Member</h2>
+      {/* Register Modal via Portal */}
+      {showRegisterModal && createPortal(
+        <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 ${isDark ? 'bg-[#020617]/80' : 'bg-slate-900/40'} backdrop-blur-md animate-in fade-in duration-300`}>
+          <div className="absolute inset-0 transition-opacity" onClick={() => setShowRegisterModal(false)}></div>
+
+          <div className={`${isDark ? 'bg-[#0b1021] border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.6)]' : 'bg-white border-slate-200 shadow-2xl'} rounded-[2rem] border w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 relative group/modal`}>
+            
+            {/* Glowing top accent */}
+            <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent ${isDark ? 'opacity-50' : 'opacity-100'}`}></div>
+
+            {/* Modal Header */}
+            <div className={`px-8 py-6 border-b ${isDark ? 'border-white/5' : 'border-slate-100'} flex justify-between items-center relative z-10`}>
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-cyan-400/20 flex items-center justify-center border ${isDark ? 'border-indigo-500/30' : 'border-indigo-200'}`}>
+                  <UserPlus size={24} className="text-indigo-500" />
+                </div>
+                <div>
+                  <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'} tracking-tight`}>Register Member</h2>
+                  <p className={`text-sm mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Create a new kid account</p>
+                </div>
+              </div>
               <button 
-                onClick={() => setShowRegisterModal(false)}
-                className="p-1.5 rounded-lg text-[var(--admin-text-secondary)] hover:bg-[var(--admin-border)] transition-colors"
+                onClick={() => setShowRegisterModal(false)} 
+                className={`p-2.5 rounded-xl transition-all duration-200 border ${isDark ? 'text-slate-400 hover:text-white hover:bg-white/10 bg-white/5 border-transparent hover:border-white/10' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100 bg-slate-50 border-transparent hover:border-slate-200'}`}
               >
                 <X size={20} />
               </button>
             </div>
             
-            <form onSubmit={handleRegister} className="p-5 overflow-y-auto flex-1 custom-scrollbar">
+            {/* Modal Body */}
+            <div className="px-8 py-6 overflow-y-auto custom-scrollbar relative z-10">
               {registerError && (
-                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-sm rounded-xl shrink-0">
-                  {registerError}
+                <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                  <div className="w-1.5 h-full bg-rose-500 rounded-full absolute left-0 top-0 bottom-0"></div>
+                  <p className="text-sm font-medium text-rose-500 ml-2">{registerError}</p>
                 </div>
               )}
               
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-[var(--admin-text-secondary)] mb-1.5">Child's Name</label>
-                  <input required type="text" value={formData.displayName} onChange={e => setFormData({...formData, displayName: e.target.value})} className="w-full px-4 py-2 bg-[var(--admin-surface-hover)] border border-[var(--admin-border)] rounded-xl text-[var(--admin-text-primary)] focus:outline-none focus:border-[var(--admin-accent)]" placeholder="E.g. Abdullah" />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-[var(--admin-text-secondary)] mb-1.5">Age</label>
-                  <input type="number" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} className="w-full px-4 py-2 bg-[var(--admin-surface-hover)] border border-[var(--admin-border)] rounded-xl text-[var(--admin-text-primary)] focus:outline-none focus:border-[var(--admin-accent)]" placeholder="E.g. 8" />
-                </div>
+              <form id="registerForm" onSubmit={handleRegister} className="space-y-5">
+                <div className="space-y-4">
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <User size={18} className={`transition-colors ${isDark ? 'text-slate-500 group-focus-within:text-indigo-400' : 'text-slate-400 group-focus-within:text-indigo-500'}`} />
+                    </div>
+                    <input required type="text" value={formData.displayName} onChange={e => setFormData({...formData, displayName: e.target.value})} className={`w-full pl-11 pr-4 py-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-inner transition-all ${isDark ? 'bg-[#151a2d] border-white/10 text-white placeholder-slate-500 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:bg-white'}`} placeholder="Kid's Name (e.g. Abdullah)" />
+                  </div>
+                  
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Calendar size={18} className={`transition-colors ${isDark ? 'text-slate-500 group-focus-within:text-indigo-400' : 'text-slate-400 group-focus-within:text-indigo-500'}`} />
+                    </div>
+                    <input type="number" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} className={`w-full pl-11 pr-4 py-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-inner transition-all ${isDark ? 'bg-[#151a2d] border-white/10 text-white placeholder-slate-500 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:bg-white'}`} placeholder="Age (e.g. 8)" />
+                  </div>
+                  
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Mail size={18} className={`transition-colors ${isDark ? 'text-slate-500 group-focus-within:text-indigo-400' : 'text-slate-400 group-focus-within:text-indigo-500'}`} />
+                    </div>
+                    <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className={`w-full pl-11 pr-4 py-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-inner transition-all ${isDark ? 'bg-[#151a2d] border-white/10 text-white placeholder-slate-500 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:bg-white'}`} placeholder="Login Email" />
+                  </div>
+                  
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Lock size={18} className={`transition-colors ${isDark ? 'text-slate-500 group-focus-within:text-indigo-400' : 'text-slate-400 group-focus-within:text-indigo-500'}`} />
+                    </div>
+                    <input required type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className={`w-full pl-11 pr-4 py-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-inner transition-all ${isDark ? 'bg-[#151a2d] border-white/10 text-white placeholder-slate-500 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:bg-white'}`} placeholder="Password (Min 6 chars)" />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-[var(--admin-text-secondary)] mb-1.5">Login Email</label>
-                  <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-2 bg-[var(--admin-surface-hover)] border border-[var(--admin-border)] rounded-xl text-[var(--admin-text-primary)] focus:outline-none focus:border-[var(--admin-accent)]" placeholder="user@example.com" />
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Mail size={18} className={`transition-colors ${isDark ? 'text-slate-500 group-focus-within:text-indigo-400' : 'text-slate-400 group-focus-within:text-indigo-500'}`} />
+                    </div>
+                    <input type="email" value={formData.parentEmail} onChange={e => setFormData({...formData, parentEmail: e.target.value})} className={`w-full pl-11 pr-4 py-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-inner transition-all ${isDark ? 'bg-[#151a2d] border-white/10 text-white placeholder-slate-500 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:bg-white'}`} placeholder="Parent's Email (Optional)" />
+                  </div>
                 </div>
+              </form>
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-[var(--admin-text-secondary)] mb-1.5">Password</label>
-                  <input required type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full px-4 py-2 bg-[var(--admin-surface-hover)] border border-[var(--admin-border)] rounded-xl text-[var(--admin-text-primary)] focus:outline-none focus:border-[var(--admin-accent)]" placeholder="Minimum 6 characters" />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-[var(--admin-text-secondary)] mb-1.5">Parent Email (Optional)</label>
-                  <input type="email" value={formData.parentEmail} onChange={e => setFormData({...formData, parentEmail: e.target.value})} className="w-full px-4 py-2 bg-[var(--admin-surface-hover)] border border-[var(--admin-border)] rounded-xl text-[var(--admin-text-primary)] focus:outline-none focus:border-[var(--admin-accent)]" placeholder="parent@example.com" />
-                </div>
-              </div>
-
-              <div className="mt-6 flex gap-3">
-                <button 
-                  type="button" 
-                  onClick={() => setShowRegisterModal(false)}
-                  className="flex-1 py-2.5 px-4 bg-[var(--admin-surface-hover)] border border-[var(--admin-border)] text-[var(--admin-text-primary)] rounded-xl font-medium hover:bg-[var(--admin-border)] transition-colors"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={registering}
-                  className="flex-1 py-2.5 px-4 bg-gradient-to-r from-indigo-500 to-cyan-400 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-indigo-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
-                >
-                  {registering ? <Loader2 size={18} className="animate-spin" /> : <UserPlus size={18} />}
-                  {registering ? 'Creating...' : 'Register'}
-                </button>
-              </div>
-            </form>
+            {/* Modal Footer */}
+            <div className={`px-8 py-5 border-t ${isDark ? 'border-white/5 bg-[#0b1021]' : 'border-slate-100 bg-slate-50/50'} flex flex-col-reverse sm:flex-row gap-3 sm:justify-end relative z-10 rounded-b-[2rem]`}>
+              <button
+                type="button"
+                onClick={() => setShowRegisterModal(false)}
+                className={`px-6 py-3 rounded-xl font-medium transition-all ${isDark ? 'text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 border-transparent hover:border-white/10 border' : 'text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200'}`}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="registerForm"
+                disabled={registering}
+                className="flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] text-white rounded-xl font-bold transition-all disabled:opacity-50 border border-indigo-400/30"
+              >
+                {registering ? <Loader2 className="animate-spin" size={18} /> : 'Register Member'}
+              </button>
+            </div>
           </div>
-        </div>
+        </div>, document.body
       )}
 
     </div>

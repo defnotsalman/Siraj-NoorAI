@@ -85,7 +85,7 @@ function AudioPlayer({ storyId, audioUrl }) {
     return (
       <div className="bg-rose-500/10 border border-rose-500/30 rounded-3xl p-6 mt-6 flex items-center justify-center gap-3 text-rose-300">
         <AlertTriangle />
-        <span>Oops! The audio for this story isn't ready yet.</span>
+        <span>Oops! The audio could not be loaded right now. Please check your connection.</span>
       </div>
     );
   }

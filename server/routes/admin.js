@@ -9,8 +9,11 @@ import {
   deleteStory,
   getUsers,
   getUserDetail,
+  updateUserStatus,
   registerUser,
-  getChatLogs
+  getAllReviews,
+  approveReview,
+  deleteReview
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -65,7 +68,10 @@ router.delete('/stories/:storyId', deleteStory);
 router.get('/users', getUsers);
 router.post('/users/register', registerUser);
 router.get('/users/:userId', getUserDetail);
+router.patch('/users/:userId/status', updateUserStatus);
 
-router.get('/chat-logs', getChatLogs);
+router.get('/reviews', getAllReviews);
+router.patch('/reviews/:id/approve', approveReview);
+router.delete('/reviews/:id', deleteReview);
 
 export default router;

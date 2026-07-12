@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import { updateUserProfile, createUserProfile } from '../../services/profile';
@@ -17,6 +17,16 @@ export default function CompleteProfileForm() {
   
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (profile) {
+      if (!displayName && profile.displayName) setDisplayName(profile.displayName);
+      if (!age && profile.age) setAge(profile.age);
+      if (!parentEmail && profile.parentEmail) setParentEmail(profile.parentEmail);
+      if (profile.avatar) setAvatar(profile.avatar);
+      if (profile.preferredLanguage) setPreferredLanguage(profile.preferredLanguage);
+    }
+  }, [profile]);
 
   const validate = () => {
     const newErrors = {};

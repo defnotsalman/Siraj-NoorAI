@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import ChatBubble from "./ChatBubble";
 import MessageInput from "./MessageInput";
 import { Sparkles, Moon, Star } from 'lucide-react';
@@ -13,6 +13,16 @@ function AIChat({ storyId, storyTitle }) {
     }
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const [language, setLanguage] = useState("Urdu");
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
 
   const sendMessage = async (text) => {
     setMessages((prev) => [
@@ -31,7 +41,8 @@ function AIChat({ storyId, storyTitle }) {
         body: JSON.stringify({ 
           storyId, 
           question: text,
-          conversationHistory: messages
+          conversationHistory: messages,
+          language
         }),
       });
 
@@ -75,6 +86,19 @@ function AIChat({ storyId, storyTitle }) {
         }}
       ></div>
 
+      {/* Language Selector */}
+      <div className="absolute top-4 right-4 z-[60]">
+        <select 
+          value={language} 
+          onChange={(e) => setLanguage(e.target.value)}
+          className="bg-slate-800/80 border border-white/20 text-slate-200 text-xs px-3 py-1.5 rounded-full outline-none focus:border-indigo-400 backdrop-blur-md cursor-pointer"
+        >
+          <option value="Urdu">Urdu (اردو)</option>
+          <option value="Roman Urdu">Roman Urdu</option>
+          <option value="English">English</option>
+        </select>
+      </div>
+
       <div className="flex-1 overflow-y-auto px-6 py-6 md:px-10 md:py-8 custom-scrollbar space-y-4 relative z-10">
         
         {messages.length === 1 && !isTyping ? (
@@ -90,16 +114,16 @@ function AIChat({ storyId, storyTitle }) {
 
              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 w-full max-w-3xl mx-auto">
                {[
-                 { title: "Prophet Stories", icon: "BookOpen", color: "from-indigo-600 to-blue-600", border: "border-indigo-500/30", bg: "bg-indigo-950/40" },
-                 { title: "Quran Wonders", icon: "Sparkles", color: "from-rose-600 to-pink-600", border: "border-pink-500/30", bg: "bg-rose-950/40" },
-                 { title: "Islamic History", icon: "Clock", color: "from-emerald-600 to-teal-600", border: "border-emerald-500/30", bg: "bg-emerald-950/40" },
-                 { title: "Moral Values", icon: "Heart", color: "from-amber-600 to-orange-600", border: "border-amber-500/30", bg: "bg-amber-950/40" },
-                 { title: "Daily Duas", icon: "Moon", color: "from-purple-600 to-fuchsia-600", border: "border-purple-500/30", bg: "bg-purple-950/40" },
-                 { title: "Fun Quiz", icon: "Target", color: "from-cyan-600 to-blue-600", border: "border-cyan-500/30", bg: "bg-cyan-950/40" }
+                 { title: "Story Summary", query: "Can you summarize this story for me?", icon: "BookOpen", color: "from-indigo-600 to-blue-600", border: "border-indigo-500/30", bg: "bg-indigo-950/40" },
+                 { title: "Main Characters", query: "Who are the main characters in this story?", icon: "User", color: "from-rose-600 to-pink-600", border: "border-pink-500/30", bg: "bg-rose-950/40" },
+                 { title: "Moral Lesson", query: "What is the main moral lesson of this story?", icon: "Heart", color: "from-emerald-600 to-teal-600", border: "border-emerald-500/30", bg: "bg-emerald-950/40" },
+                 { title: "Important Events", query: "What are the most important events that happened?", icon: "Clock", color: "from-amber-600 to-orange-600", border: "border-amber-500/30", bg: "bg-amber-950/40" },
+                 { title: "Why it matters", query: "Why is this story important for us to learn?", icon: "Sparkles", color: "from-purple-600 to-fuchsia-600", border: "border-purple-500/30", bg: "bg-purple-950/40" },
+                 { title: "Test Me", query: "Ask me a simple question to test my knowledge on this story.", icon: "Target", color: "from-cyan-600 to-blue-600", border: "border-cyan-500/30", bg: "bg-cyan-950/40" }
                ].map((s, i) => (
                  <button 
                    key={i} 
-                   onClick={() => sendMessage(`Tell me about ${s.title}`)}
+                   onClick={() => sendMessage(s.query)}
                    className={`flex flex-col items-center justify-center p-5 rounded-2xl ${s.bg} hover:bg-slate-800/60 border ${s.border} backdrop-blur-sm transition-all hover:-translate-y-1 group cursor-pointer shadow-lg`}
                  >
                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center mb-3 shadow-md group-hover:shadow-lg transition-all`}>
@@ -107,8 +131,8 @@ function AIChat({ storyId, storyTitle }) {
                      {s.icon === "Sparkles" && <Sparkles className="text-white" size={24} />}
                      {s.icon === "Clock" && <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
                      {s.icon === "Heart" && <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>}
-                     {s.icon === "Moon" && <Moon className="text-white" size={24} />}
                      {s.icon === "Target" && <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>}
+                     {s.icon === "User" && <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
                    </div>
                    <span className="text-slate-200 font-bold text-sm tracking-wide text-center">{s.title}</span>
                  </button>
@@ -136,6 +160,7 @@ function AIChat({ storyId, storyTitle }) {
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </>
         )}
       </div>

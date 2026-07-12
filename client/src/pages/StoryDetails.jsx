@@ -3,14 +3,15 @@ import { useParams, useNavigate } from "react-router-dom";
 import AIChat from "../components/AI/AIChat";
 import ProgressBar from "../components/ProgressBar";
 import AudioPlayer from "../components/AudioPlayer";
-import { Volume2, VolumeX, Bot, ClipboardList, Bookmark, ArrowLeft, Loader2, Sparkles } from "lucide-react";
+import { Volume2, VolumeX, Bot, ClipboardList, Bookmark, ArrowLeft, Loader2, Sparkles, Trophy } from "lucide-react";
 import useAuth from '../hooks/useAuth';
 import { updateUserProfile } from '../services/profile';
+import confetti from 'canvas-confetti';
 
 function StoryDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [story, setStory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAIChat, setShowAIChat] = useState(false);
@@ -18,6 +19,8 @@ function StoryDetails() {
   const [hasRead, setHasRead] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [achievementUnlocked, setAchievementUnlocked] = useState(null);
+  const [quizAttempts, setQuizAttempts] = useState(0);
 
   useEffect(() => {
     if (id) {
@@ -26,6 +29,10 @@ function StoryDetails() {
       
       const completed = JSON.parse(localStorage.getItem('completedStories') || '[]');
       setHasRead(completed.includes(id));
+      
+      const records = JSON.parse(localStorage.getItem('quizRecords') || '[]');
+      const attempts = records.filter(r => r.storyId === id).length;
+      setQuizAttempts(attempts);
     }
   }, [id]);
 
@@ -50,7 +57,7 @@ function StoryDetails() {
     setUpdating(true);
     
     try {
-      // Do not update XP/Streak here, let Quiz handle it!
+      // Update XP/Streak here, let Quiz handle it! (Wait, I will update storiesRead here for achievements)
       
       if (user) {
         localStorage.removeItem(`lastOpenedStory_${user.id}`);
@@ -61,6 +68,35 @@ function StoryDetails() {
         localStorage.setItem('completedStories', JSON.stringify([...completed, id]));
       }
       
+      // Update stories read to unlock achievements
+      const currentRead = profile.storiesRead || 0;
+      const newReadCount = currentRead + 1;
+      
+      await updateUserProfile(user.id, {
+        storiesRead: newReadCount
+      });
+      if (refreshProfile) refreshProfile(); // Trigger context update
+
+      // Celebration Party!
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'],
+        zIndex: 9999
+      });
+
+      // Check if they hit a milestone to show custom alert popup
+      let unlocked = null;
+      if (newReadCount === 1) unlocked = "First Story";
+      else if (newReadCount === 5) unlocked = "Book Lover";
+      else if (newReadCount === 10) unlocked = "Super Reader";
+      
+      if (unlocked) {
+         setAchievementUnlocked(unlocked);
+         setTimeout(() => setAchievementUnlocked(null), 5000); // Hide after 5 sec
+      }
+
       setHasRead(true);
     } catch (err) {
       console.error("Error updating progress:", err);
@@ -245,7 +281,9 @@ function StoryDetails() {
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${hasRead ? 'bg-[#4c2f6d] text-[#b17cee]' : 'bg-white/5 text-slate-600'}`}>
                 <ClipboardList size={20} />
               </div>
-              <span className="text-sm md:text-base flex-1 text-left">Take Quiz</span>
+              <span className="text-sm md:text-base flex-1 text-left">
+                {quizAttempts > 0 ? `Try Again (${quizAttempts + 1}${(quizAttempts + 1) % 100 > 10 && (quizAttempts + 1) % 100 < 14 ? 'th' : ['th', 'st', 'nd', 'rd'][((quizAttempts + 1) % 10) < 4 ? ((quizAttempts + 1) % 10) : 0]} Try)` : 'Take Quiz'}
+              </span>
               {!hasRead && <span className="text-[10px] uppercase tracking-wider text-rose-400 bg-rose-400/10 px-2 py-1 rounded border border-rose-400/20">Locked</span>}
             </button>
 
@@ -355,6 +393,22 @@ function StoryDetails() {
           </div>
         </div>
       )}
+
+      {/* Achievement Unlocked Popup */}
+      {achievementUnlocked && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-bottom-10 fade-in duration-500">
+          <div className="bg-[#1e2332]/95 backdrop-blur-xl border border-amber-400/30 rounded-full px-6 py-4 shadow-[0_10px_40px_rgba(245,158,11,0.3)] flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-inner">
+              <Trophy size={20} className="text-white" />
+            </div>
+            <div>
+              <p className="text-amber-400 font-bold text-sm tracking-widest uppercase">Achievement Unlocked!</p>
+              <p className="text-white font-black text-lg">{achievementUnlocked}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

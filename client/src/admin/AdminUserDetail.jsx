@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase/supabaseClient';
-import { Loader2, ArrowLeft, Book, Clock, Target } from 'lucide-react';
+import { Loader2, ArrowLeft, Book, Clock, Target, AlertTriangle, ShieldCheck, Power } from 'lucide-react';
 import { useParams, Link } from 'react-router-dom';
 
 const AdminUserDetail = () => {
@@ -8,6 +8,7 @@ const AdminUserDetail = () => {
   const [user, setUser] = useState(null);
   const [progress, setProgress] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
     const fetchUserDetail = async () => {
@@ -36,6 +37,34 @@ const AdminUserDetail = () => {
     fetchUserDetail();
   }, [userId]);
 
+  const handleToggleStatus = async () => {
+    if (!window.confirm(`Are you sure you want to ${user.is_active === false ? 'reactivate' : 'deactivate'} this account?`)) return;
+    
+    setUpdatingStatus(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}/status`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}` 
+        },
+        body: JSON.stringify({ is_active: user.is_active === false ? true : false })
+      });
+      
+      if (res.ok) {
+        const updatedProfile = await res.json();
+        setUser(updatedProfile);
+      } else {
+        alert("Failed to update status");
+      }
+    } catch (err) {
+      console.error("Error toggling status", err);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-[var(--admin-accent)]" size={32} /></div>;
   }
@@ -46,12 +75,34 @@ const AdminUserDetail = () => {
 
   return (
     <div className="transition-colors duration-300">
-      <div className="mb-6">
-        <Link to="/admin/users" className="text-[var(--admin-accent)] hover:opacity-80 flex items-center gap-2 mb-4 font-medium text-sm transition-opacity">
-          <ArrowLeft size={16} /> Back to Users
-        </Link>
-        <h1 className="text-2xl font-bold text-[var(--admin-text-primary)]">{user.displayName || 'Unknown'}'s Profile</h1>
-        <p className="text-[var(--admin-text-secondary)]">{user.parentEmail || user.email}</p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <Link to="/admin/users" className="text-[var(--admin-accent)] hover:opacity-80 flex items-center gap-2 mb-4 font-medium text-sm transition-opacity">
+            <ArrowLeft size={16} /> Back to Users
+          </Link>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-[var(--admin-text-primary)]">{user.displayName || 'Unknown'}'s Profile</h1>
+            {user.is_active === false ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
+                <AlertTriangle size={14} /> Deactivated
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
+                <ShieldCheck size={14} /> Active
+              </span>
+            )}
+          </div>
+          <p className="text-[var(--admin-text-secondary)] mt-1">{user.parentEmail || user.email}</p>
+        </div>
+        
+        <button 
+          onClick={handleToggleStatus}
+          disabled={updatingStatus}
+          className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all disabled:opacity-50 ${user.is_active === false ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm' : 'bg-rose-600 hover:bg-rose-500 text-white shadow-sm'}`}
+        >
+          {updatingStatus ? <Loader2 size={18} className="animate-spin" /> : <Power size={18} />}
+          {user.is_active === false ? 'Reactivate Account' : 'Deactivate Account'}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

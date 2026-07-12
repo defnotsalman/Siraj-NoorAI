@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
-import { Home, BookOpen, Sparkles, User, LogIn, BookHeart } from 'lucide-react';
+import { Home, BookOpen, Sparkles, User, LogIn, BookHeart, Bookmark } from 'lucide-react';
 
 function BottomNav() {
   const location = useLocation();
@@ -12,7 +12,7 @@ function BottomNav() {
     { name: "Home", path: "/", icon: Home },
     { name: "Stories", path: "/stories", icon: BookOpen },
     { name: "Quran", path: "/quran", icon: BookHeart },
-    { name: "AI", path: "/ai", icon: Sparkles },
+    { name: "Bookmarks", path: "/bookmarks", icon: Bookmark },
     { name: user ? "Profile" : "Login", path: user ? "/profile" : "/login", icon: user ? User : LogIn }
   ];
 

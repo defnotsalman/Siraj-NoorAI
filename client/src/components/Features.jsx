@@ -1,13 +1,27 @@
 import { BookOpen, Sparkles, Trophy } from "lucide-react";
 import FeatureCard from "./FeatureCard";
+import { useState, useEffect } from "react";
 
 function Features() {
+  const [storyCount, setStoryCount] = useState(57); // Default fallback
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/stories')
+      .then(res => res.json())
+      .then(data => {
+        if (data && Array.isArray(data)) {
+          setStoryCount(data.length);
+        }
+      })
+      .catch(err => console.error("Failed to fetch stories count", err));
+  }, []);
+
   return (
     <section className="grid md:grid-cols-3 gap-6 max-w-7xl mx-auto px-4 py-16">
 
       <FeatureCard
         icon={BookOpen}
-        title="57 Stories"
+        title={`${storyCount} Stories`}
         description="Beautiful Islamic stories for kids, carefully written and narrated."
       />
 

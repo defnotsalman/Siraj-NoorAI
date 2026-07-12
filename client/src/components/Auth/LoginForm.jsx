@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginUser, sendPasswordResetEmail } from '../../services/auth';
 import { getUserProfile } from '../../services/profile';
+import { supabase } from '../../supabase/supabaseClient';
 import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function LoginForm({ isAdminMode = false }) {
@@ -34,15 +35,24 @@ export default function LoginForm({ isAdminMode = false }) {
       
       const profile = await getUserProfile(user.id);
       
+      if (profile?.is_active === false) {
+        await supabase.auth.signOut();
+        throw new Error("Your account has been deactivated by an administrator.");
+      }
+      
       if (isAdminMode) {
         if (!profile?.is_admin) {
+          await supabase.auth.signOut();
           throw new Error("You do not have administrative privileges.");
         }
+        // Set admin token so AdminLayout knows we are valid
+        localStorage.setItem("adminToken", userCredential.session?.access_token || "mock_token");
         navigate('/admin');
       } else {
         if (profile?.is_admin) {
-           navigate('/admin');
-        } else if (profile && !profile.profileComplete) {
+          await supabase.auth.signOut();
+          throw new Error("Admin accounts must use the Admin Portal to log in.");
+        } else if (profile && !profile.profileComplete && !profile.displayName) {
           navigate('/complete-profile');
         } else {
           navigate('/');

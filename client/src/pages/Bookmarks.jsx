@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import StoryCard from "../components/StoryCard";
 import SearchBar from "../components/SearchBar";
 import CategoryFilter from "../components/CategoryFilter";
-import { Library, Loader2, AlertCircle } from "lucide-react";
+import { Bookmark, Loader2, AlertCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 
-function Stories() {
+function Bookmarks() {
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,7 +20,9 @@ function Stories() {
         return res.json();
       })
       .then(data => {
-        setStories(data);
+        const bookmarkedIds = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+        const bookmarkedStories = data.filter(s => bookmarkedIds.includes(s.id));
+        setStories(bookmarkedStories);
         setLoading(false);
       })
       .catch(err => {
@@ -38,13 +41,13 @@ function Stories() {
       selected === "All" || story.category === selected;
 
     return matchesSearch && matchesCategory;
-  }).sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }));
+  });
 
   if (loading) {
     return (
       <div className="min-h-[70vh] flex flex-col justify-center items-center text-white">
         <Loader2 size={64} className="text-amber-400 animate-spin mb-6" />
-        <h2 className="text-2xl font-bold text-amber-300">Loading library...</h2>
+        <h2 className="text-2xl font-bold text-amber-300">Loading your bookmarks...</h2>
       </div>
     );
   }
@@ -63,10 +66,10 @@ function Stories() {
 
       <div className="flex flex-col items-center justify-center text-center mb-12">
         <div className="bg-amber-400/20 p-4 rounded-full text-amber-400 mb-6 border border-amber-400/20 shadow-[0_0_30px_rgba(251,191,36,0.15)]">
-          <Library size={40} />
+          <Bookmark size={40} />
         </div>
         <h1 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-500 mb-4 tracking-tight drop-shadow-sm">
-          All Stories
+          Bookmarked Stories
         </h1>
         <p className="text-lg text-slate-400 font-medium bg-white/5 px-6 py-2 rounded-full border border-white/10 shadow-inner">
           {filteredStories.length} Stories Available
@@ -91,8 +94,11 @@ function Stories() {
       ) : (
         <div className="text-center py-20 glass-panel rounded-3xl mt-8">
           <div className="text-6xl mb-4 opacity-50">🔍</div>
-          <h3 className="text-2xl font-bold text-white mb-2">No stories found</h3>
-          <p className="text-slate-400">Try adjusting your search or category filter.</p>
+          <h3 className="text-2xl font-bold text-white mb-2">No bookmarks found</h3>
+          <p className="text-slate-400 mb-6">You haven't bookmarked any stories matching this filter.</p>
+          <Link to="/stories" className="bg-amber-500 text-slate-900 px-6 py-3 rounded-full font-bold">
+             Browse Stories
+          </Link>
         </div>
       )}
 
@@ -100,4 +106,4 @@ function Stories() {
   );
 }
 
-export default Stories;
+export default Bookmarks;

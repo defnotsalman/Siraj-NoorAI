@@ -10,26 +10,29 @@ const QUIZ_DIR = path.join(__dirname, '..', 'output', 'quizzes');
 // Simple in-memory cache for loaded quizzes
 const quizCache = new Map();
 
-async function loadQuiz(storyId) {
-  if (quizCache.has(storyId)) {
-    return quizCache.get(storyId);
+async function loadQuiz(storyId, lang = 'ur') {
+  const cacheKey = `${storyId}_${lang}`;
+  if (quizCache.has(cacheKey)) {
+    return quizCache.get(cacheKey);
   }
 
-  const quizPath = path.join(QUIZ_DIR, `${storyId}.json`);
+  const fileName = lang === 'en' ? `${storyId}_en.json` : `${storyId}.json`;
+  const quizPath = path.join(QUIZ_DIR, fileName);
   if (!await fs.pathExists(quizPath)) {
     return null; // Quiz not generated yet
   }
 
   const quizData = await fs.readJson(quizPath);
-  quizCache.set(storyId, quizData);
+  quizCache.set(cacheKey, quizData);
   return quizData;
 }
 
 export const getQuiz = async (req, res) => {
   const { storyId } = req.params;
+  const { lang = 'ur' } = req.query;
 
   try {
-    const quizData = await loadQuiz(storyId);
+    const quizData = await loadQuiz(storyId, lang);
 
     if (!quizData) {
       return res.status(404).json({ error: "Quiz for this story isn't ready yet." });
@@ -64,6 +67,7 @@ export const getQuiz = async (req, res) => {
 
 export const submitQuiz = async (req, res) => {
   const { storyId } = req.params;
+  const { lang = 'ur' } = req.query;
   const { answers } = req.body; // Array of { questionId, selectedIndex }
 
   if (!Array.isArray(answers)) {
@@ -71,7 +75,7 @@ export const submitQuiz = async (req, res) => {
   }
 
   try {
-    const quizData = await loadQuiz(storyId);
+    const quizData = await loadQuiz(storyId, lang);
 
     if (!quizData) {
       return res.status(404).json({ error: "Quiz not found." });

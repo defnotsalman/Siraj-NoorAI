@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabase/supabaseClient';
-import { Plus, Edit2, CheckCircle, XCircle, Loader2, BookOpen, Search, Filter, AlertCircle, FileText, UploadCloud, ChevronRight, Activity } from 'lucide-react';
+import { Plus, Edit2, CheckCircle, XCircle, Loader2, BookOpen, Search, Filter, AlertCircle, FileText, UploadCloud, ChevronRight, Activity, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAdminTheme } from './context/AdminThemeContext';
 
 const AdminStories = () => {
+  const { adminTheme } = useAdminTheme();
+  const isDark = adminTheme === 'dark';
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -264,53 +267,66 @@ const AdminStories = () => {
 
       {/* Upload Wizard Modal */}
       {showUploadModal && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0" style={{ position: 'fixed' }}>
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={uploadStep !== 3 ? resetUploadModal : null}></div>
+        <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 ${isDark ? 'bg-[#020617]/80' : 'bg-slate-900/40'} backdrop-blur-md animate-in fade-in duration-300`}>
+          <div className="absolute inset-0 transition-opacity" onClick={uploadStep !== 3 ? resetUploadModal : null}></div>
 
-          <div className="relative bg-[var(--admin-surface)] rounded-3xl overflow-hidden shadow-2xl border border-[var(--admin-border)] w-full max-w-xl flex flex-col transform transition-all animate-fade-in-up">
+          <div className={`${isDark ? 'bg-[#0b1021] border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.6)]' : 'bg-white border-slate-200 shadow-2xl'} rounded-[2rem] border w-full max-w-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 relative group/modal`}>
             
+            {/* Glowing top accent */}
+            <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent ${isDark ? 'opacity-50' : 'opacity-100'}`}></div>
+
             {/* Modal Header */}
-            <div className="px-8 py-6 border-b border-[var(--admin-border)] flex justify-between items-center bg-[var(--admin-surface)]">
-              <h3 className="text-xl font-bold text-[var(--admin-text-primary)] flex items-center gap-2">
-                <UploadCloud className="text-[var(--admin-accent)]" /> 
-                {uploadStep === 1 ? 'Upload Story' : uploadStep === 2 ? 'Review & Confirm' : 'Processing AI'}
-              </h3>
+            <div className={`px-6 py-5 border-b ${isDark ? 'border-white/5' : 'border-slate-100'} flex justify-between items-center relative z-10`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-cyan-400/20 flex items-center justify-center border ${isDark ? 'border-indigo-500/30' : 'border-indigo-200'}`}>
+                  <UploadCloud size={20} className="text-indigo-500" />
+                </div>
+                <div>
+                  <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'} tracking-tight`}>
+                    {uploadStep === 1 ? 'Upload Story' : uploadStep === 2 ? 'Review & Confirm' : 'Processing AI'}
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Automated Story Ingestion</p>
+                </div>
+              </div>
               {uploadStep !== 3 && (
-                <button onClick={resetUploadModal} className="text-[var(--admin-text-secondary)] hover:text-[var(--admin-text-primary)] transition-colors">
-                  <XCircle size={24} />
+                <button 
+                  onClick={resetUploadModal} 
+                  className={`p-2 rounded-xl transition-all duration-200 border ${isDark ? 'text-slate-400 hover:text-white hover:bg-white/10 bg-white/5 border-transparent hover:border-white/10' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100 bg-slate-50 border-transparent hover:border-slate-200'}`}
+                >
+                  <X size={18} />
                 </button>
               )}
             </div>
 
             {/* Stepper UI */}
-            <div className="px-8 pt-6 pb-2 bg-[var(--admin-surface)]">
+            <div className="px-8 pt-6 pb-2 relative z-10">
               <div className="flex items-center justify-between relative">
-                <div className="absolute left-0 top-1/2 w-full h-0.5 bg-[var(--admin-border)] -z-10 -translate-y-1/2"></div>
+                <div className={`absolute left-0 top-1/2 w-full h-0.5 -z-10 -translate-y-1/2 ${isDark ? 'bg-white/5' : 'bg-slate-200'}`}></div>
                 
                 {[1, 2, 3].map(step => (
-                  <div key={step} className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors ${
-                    uploadStep > step ? 'bg-[var(--admin-accent)] border-[var(--admin-accent)] text-white' :
-                    uploadStep === step ? 'bg-[var(--admin-surface)] border-[var(--admin-accent)] text-[var(--admin-accent)] shadow-sm' :
-                    'bg-[var(--admin-surface)] border-[var(--admin-text-secondary)] text-[var(--admin-text-secondary)]'
+                  <div key={step} className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all duration-300 ${
+                    uploadStep > step ? 'bg-indigo-500 border-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]' :
+                    uploadStep === step ? `${isDark ? 'bg-[#0b1021]' : 'bg-white'} border-indigo-500 text-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)]` :
+                    `${isDark ? 'bg-[#151a2d] border-white/10 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-400'}`
                   }`}>
                     {uploadStep > step ? <CheckCircle size={16} /> : step}
                   </div>
                 ))}
               </div>
-              <div className="flex justify-between text-xs font-medium text-[var(--admin-text-secondary)] mt-2 px-1">
-                <span className={uploadStep >= 1 ? 'text-[var(--admin-accent)]' : ''}>Upload</span>
-                <span className={uploadStep >= 2 ? 'text-[var(--admin-accent)]' : ''}>Review</span>
-                <span className={uploadStep === 3 ? 'text-[var(--admin-accent)]' : ''}>Process</span>
+              <div className={`flex justify-between text-xs font-bold mt-3 px-1 uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <span className={uploadStep >= 1 ? 'text-indigo-400' : ''}>Upload</span>
+                <span className={uploadStep >= 2 ? 'text-indigo-400' : ''}>Review</span>
+                <span className={uploadStep === 3 ? 'text-indigo-400' : ''}>Process</span>
               </div>
             </div>
 
             {/* Modal Body */}
-            <div className="px-8 py-6 flex-1 bg-[var(--admin-surface)]">
+            <div className="px-8 py-6 flex-1 relative z-10">
               {uploadStep === 1 && (
-                <div className="animate-fade-in">
+                <div className="animate-in fade-in zoom-in-95 duration-300">
                   <div 
                     onClick={() => fileInputRef.current.click()}
-                    className={`mt-2 border-2 border-dashed ${uploadFile ? 'border-[var(--admin-accent)] bg-[var(--admin-accent-bg)]' : 'border-[var(--admin-text-secondary)] bg-[var(--admin-surface-hover)]'} rounded-2xl p-10 text-center cursor-pointer transition-colors group`}
+                    className={`mt-2 border-2 border-dashed ${uploadFile ? 'border-indigo-500 bg-indigo-500/10' : (isDark ? 'border-white/20 bg-[#151a2d]/50 hover:bg-[#151a2d]' : 'border-slate-300 bg-slate-50 hover:bg-slate-100')} rounded-2xl p-10 text-center cursor-pointer transition-all duration-300 group`}
                   >
                     <input 
                       type="file" 
@@ -319,18 +335,18 @@ const AdminStories = () => {
                       onChange={handleFileChange}
                       className="hidden" 
                     />
-                    <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-inner ${uploadFile ? 'bg-white/50 dark:bg-black/20' : 'bg-[var(--admin-surface)]'}`}>
-                      <FileText className={`${uploadFile ? 'text-[var(--admin-accent)]' : 'text-[var(--admin-text-secondary)]'}`} size={32} />
+                    <div className={`w-16 h-16 mx-auto rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform ${uploadFile ? 'bg-indigo-500 shadow-lg shadow-indigo-500/30' : (isDark ? 'bg-white/5 border border-white/10' : 'bg-white border border-slate-200 shadow-sm')}`}>
+                      <FileText className={`${uploadFile ? 'text-white' : (isDark ? 'text-slate-400 group-hover:text-white' : 'text-slate-400 group-hover:text-indigo-500')}`} size={28} />
                     </div>
                     {uploadFile ? (
                       <div>
-                        <p className="text-lg font-bold text-[var(--admin-text-primary)] mb-1">{uploadFile.name}</p>
-                        <p className="text-sm text-[var(--admin-accent)]">Ready to parse</p>
+                        <p className={`text-lg font-bold mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{uploadFile.name}</p>
+                        <p className="text-sm text-indigo-500">Ready to parse</p>
                       </div>
                     ) : (
                       <div>
-                        <p className="text-lg font-medium text-[var(--admin-text-primary)] mb-1">Click or drag `.docx` file here</p>
-                        <p className="text-sm text-[var(--admin-text-secondary)]">Microsoft Word document containing the story</p>
+                        <p className={`text-lg font-bold mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>Click or drag `.docx` file here</p>
+                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Microsoft Word document containing the story</p>
                       </div>
                     )}
                   </div>
@@ -338,33 +354,33 @@ const AdminStories = () => {
               )}
 
               {uploadStep === 2 && previewMetadata && (
-                <div className="animate-fade-in space-y-5">
-                  <div className="bg-[var(--admin-surface-hover)] rounded-xl p-4 border border-[var(--admin-border)]">
-                    <label className="block text-xs font-bold text-[var(--admin-text-secondary)] uppercase tracking-wider mb-1">Extracted Title</label>
-                    <div className="text-[var(--admin-text-primary)] font-medium text-lg">{previewMetadata.title}</div>
+                <div className="animate-in fade-in zoom-in-95 duration-300 space-y-5">
+                  <div className={`rounded-xl p-4 border shadow-inner ${isDark ? 'bg-[#151a2d] border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                    <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Extracted Title</label>
+                    <div className={`font-medium text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>{previewMetadata.title}</div>
                   </div>
                   
-                  <div className="flex gap-4">
-                    <div className="bg-[var(--admin-surface-hover)] rounded-xl p-4 border border-[var(--admin-border)] flex-1">
-                      <label className="block text-xs font-bold text-[var(--admin-text-secondary)] uppercase tracking-wider mb-1">Word Count</label>
-                      <div className="text-emerald-600 dark:text-emerald-400 font-bold text-xl">{previewMetadata.wordCount}</div>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className={`rounded-xl p-4 border shadow-inner flex-1 ${isDark ? 'bg-[#151a2d] border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                      <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Word Count</label>
+                      <div className="text-emerald-500 font-bold text-xl">{previewMetadata.wordCount}</div>
                     </div>
-                    <div className="bg-[var(--admin-surface-hover)] rounded-xl p-4 border border-[var(--admin-border)] flex-1">
-                      <label className="block text-xs font-bold text-[var(--admin-text-secondary)] uppercase tracking-wider mb-1">Format</label>
-                      <div className="text-sky-600 dark:text-sky-400 font-bold text-xl flex items-center gap-2"><FileText size={20}/> .docx</div>
+                    <div className={`rounded-xl p-4 border shadow-inner flex-1 ${isDark ? 'bg-[#151a2d] border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                      <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Format</label>
+                      <div className="text-cyan-500 font-bold text-xl flex items-center gap-2"><FileText size={20}/> .docx</div>
                     </div>
                   </div>
 
-                  <div className="bg-[var(--admin-surface-hover)] rounded-xl p-4 border border-[var(--admin-border)]">
-                    <label className="block text-xs font-bold text-[var(--admin-text-secondary)] uppercase tracking-wider mb-2">Preview Text Extract</label>
-                    <div className="text-[var(--admin-text-primary)] text-sm leading-relaxed max-h-32 overflow-y-auto pr-2 custom-scrollbar italic border-l-2 border-[var(--admin-accent)] pl-4">
+                  <div className={`rounded-xl p-4 border shadow-inner ${isDark ? 'bg-[#151a2d] border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                    <label className={`block text-[11px] font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Preview Text Extract</label>
+                    <div className={`text-sm leading-relaxed max-h-32 overflow-y-auto pr-2 custom-scrollbar italic border-l-2 border-indigo-500 pl-4 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                       "{previewMetadata.previewText}"
                     </div>
                   </div>
 
-                  <div className="bg-[var(--admin-accent-bg)] border-l-4 border-[var(--admin-accent)] p-4 rounded-r-lg flex items-start gap-3">
-                    <Activity className="text-[var(--admin-accent)] mt-0.5 shrink-0" size={18} />
-                    <p className="text-sm text-[var(--admin-text-primary)]">
+                  <div className={`border p-4 rounded-xl flex items-start gap-3 ${isDark ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-indigo-50 border-indigo-200'}`}>
+                    <Activity className="text-indigo-500 mt-0.5 shrink-0" size={18} />
+                    <p className={`text-sm ${isDark ? 'text-indigo-100/80' : 'text-indigo-900/80'}`}>
                       Confirming will immediately trigger the AI to generate a custom quiz and natural voice narration. This usually takes 1-2 minutes.
                     </p>
                   </div>
@@ -372,26 +388,26 @@ const AdminStories = () => {
               )}
 
               {uploadStep === 3 && (
-                <div className="animate-fade-in">
+                <div className="animate-in fade-in zoom-in-95 duration-300">
                   <div className="flex flex-col items-center justify-center mb-6 mt-4">
                     <div className="relative">
-                      <div className="w-16 h-16 border-4 border-[var(--admin-accent)]/30 border-t-[var(--admin-accent)] rounded-full animate-spin"></div>
+                      <div className={`w-20 h-20 border-4 rounded-full animate-spin ${isDark ? 'border-indigo-500/20 border-t-indigo-500' : 'border-indigo-100 border-t-indigo-500'}`}></div>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <Activity className="text-[var(--admin-accent)] animate-pulse" size={24} />
+                        <Activity className="text-indigo-500 animate-pulse" size={28} />
                       </div>
                     </div>
-                    <h3 className="text-[var(--admin-text-primary)] font-bold text-lg mt-4">AI is processing...</h3>
-                    <p className="text-[var(--admin-text-secondary)] text-sm">Please do not close this window</p>
+                    <h3 className={`font-bold text-lg mt-5 ${isDark ? 'text-white' : 'text-slate-900'}`}>AI is Processing...</h3>
+                    <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Please do not close this window</p>
                   </div>
 
-                  <div className="bg-[var(--admin-bg)] border border-[var(--admin-border)] font-mono text-sm p-4 rounded-xl h-48 overflow-y-auto custom-scrollbar shadow-inner">
+                  <div className={`border font-mono text-[13px] p-5 rounded-2xl h-56 overflow-y-auto custom-scrollbar shadow-inner ${isDark ? 'bg-[#020617] border-white/5' : 'bg-slate-100 border-slate-200'}`}>
                     {processingStatus.map((s, i) => (
-                      <div key={i} className={`mb-2 flex gap-2 ${s.type === 'error' ? 'text-rose-500 dark:text-rose-400' : s.type === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--admin-text-primary)]'}`}>
-                        <span className="text-[var(--admin-text-secondary)]">[{new Date().toLocaleTimeString()}]</span>
+                      <div key={i} className={`mb-2.5 flex gap-3 ${s.type === 'error' ? 'text-rose-500' : s.type === 'success' ? 'text-emerald-600' : (isDark ? 'text-slate-300' : 'text-slate-700')}`}>
+                        <span className={`shrink-0 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>[{new Date().toLocaleTimeString()}]</span>
                         <span className="flex-1">
-                          {s.type === 'info' && <span className="text-[var(--admin-accent)] mr-2">➜</span>}
-                          {s.type === 'success' && <span className="text-emerald-600 dark:text-emerald-400 mr-2">✔</span>}
-                          {s.type === 'error' && <span className="text-rose-500 dark:text-rose-400 mr-2">✖</span>}
+                          {s.type === 'info' && <span className="text-indigo-500 mr-2">➜</span>}
+                          {s.type === 'success' && <span className="text-emerald-500 mr-2">✔</span>}
+                          {s.type === 'error' && <span className="text-rose-500 mr-2">✖</span>}
                           {s.message}
                         </span>
                       </div>
@@ -402,19 +418,19 @@ const AdminStories = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-8 py-5 border-t border-[var(--admin-border)] bg-[var(--admin-surface-hover)] flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
+            <div className={`px-6 py-5 border-t ${isDark ? 'border-white/5 bg-[#0b1021]' : 'border-slate-100 bg-slate-50/50'} flex flex-col-reverse sm:flex-row gap-3 sm:justify-end relative z-10 rounded-b-[2rem]`}>
               {uploadStep === 1 && (
                 <>
                   <button
                     onClick={resetUploadModal}
-                    className="px-6 py-2.5 rounded-xl font-medium text-[var(--admin-text-secondary)] hover:text-[var(--admin-text-primary)] hover:bg-[var(--admin-border)] transition-colors"
+                    className={`px-6 py-3 rounded-xl font-medium transition-all ${isDark ? 'text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 border-transparent hover:border-white/10 border' : 'text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200'}`}
                   >
                     Cancel
                   </button>
                   <button
                     disabled={!uploadFile || uploading}
+                    className="flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] text-white rounded-xl font-bold transition-all disabled:opacity-50 border border-indigo-400/30"
                     onClick={handleUploadSubmit}
-                    className="flex items-center justify-center gap-2 px-6 py-2.5 bg-[var(--admin-accent)] hover:opacity-90 text-white rounded-xl font-medium transition-all disabled:opacity-50 shadow-sm"
                   >
                     {uploading ? <Loader2 className="animate-spin" size={18} /> : 'Parse Document'} 
                     {!uploading && <ChevronRight size={18} />}
@@ -426,13 +442,13 @@ const AdminStories = () => {
                 <>
                   <button
                     onClick={resetUploadModal}
-                    className="px-6 py-2.5 rounded-xl font-medium text-[var(--admin-text-secondary)] hover:text-[var(--admin-text-primary)] hover:bg-[var(--admin-border)] transition-colors"
+                    className={`px-6 py-3 rounded-xl font-medium transition-all ${isDark ? 'text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 border-transparent hover:border-white/10 border' : 'text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200'}`}
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleProcessSubmit}
-                    className="flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-all shadow-sm"
+                    className="flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] text-white rounded-xl font-bold transition-all border border-emerald-400/30"
                   >
                     <Activity size={18} /> Confirm & Run AI
                   </button>
@@ -442,7 +458,7 @@ const AdminStories = () => {
               {uploadStep === 3 && processingStatus.some(s => s.type === 'success' || s.type === 'error') && (
                 <button
                   onClick={resetUploadModal}
-                  className="w-full sm:w-auto px-8 py-2.5 bg-[var(--admin-accent)] hover:opacity-90 text-white rounded-xl font-bold transition-all shadow-sm"
+                  className="w-full sm:w-auto px-10 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] text-white rounded-xl font-bold transition-all border border-indigo-400/30"
                 >
                   Done
                 </button>

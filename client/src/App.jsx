@@ -5,10 +5,13 @@ import BottomNav from "./components/BottomNav";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 
 import Home from "./pages/Home";
+import Landing from "./pages/Landing";
 import Stories from "./pages/Stories";
 import StoryDetails from "./pages/StoryDetails";
+import Bookmarks from "./pages/Bookmarks";
 import AI from "./pages/AI";
 import Quiz from "./pages/Quiz";
+import QuizHistory from "./pages/QuizHistory";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
@@ -19,6 +22,7 @@ import SurahDetails from "./pages/SurahDetails";
 import ProtectedRoute from "./components/Auth/ProtectedRoute";
 import CompleteProfileForm from "./components/Auth/CompleteProfileForm";
 import { AuthProvider } from "./context/AuthContext";
+import useAuth from "./hooks/useAuth";
 
 // Admin
 import AdminLogin from "./admin/AdminLogin";
@@ -28,11 +32,13 @@ import AdminStories from "./admin/AdminStories";
 import AdminStoryDetail from "./admin/AdminStoryDetail";
 import AdminUsers from "./admin/AdminUsers";
 import AdminUserDetail from "./admin/AdminUserDetail";
-import AdminChatLogs from "./admin/AdminChatLogs";
+import AdminReviews from "./admin/AdminReviews";
 
 function AppContent() {
+  const { user, loading } = useAuth();
   const location = useLocation();
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/admin-login';
+  const isLandingPage = location.pathname === '/' && !user && !loading;
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/admin-login' || isLandingPage;
   const isAdminPage = location.pathname.startsWith('/admin') && location.pathname !== '/admin-login';
 
   if (isAdminPage) {
@@ -44,7 +50,7 @@ function AppContent() {
           <Route path="stories/:storyId" element={<AdminStoryDetail />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="users/:userId" element={<AdminUserDetail />} />
-          <Route path="chat-logs" element={<AdminChatLogs />} />
+          <Route path="reviews" element={<AdminReviews />} />
         </Route>
       </Routes>
     );
@@ -54,16 +60,27 @@ function AppContent() {
     <>
       <Background />
 
-      <div className="relative z-10 pb-24">
+      <div className={`relative z-10 ${!isAuthPage ? 'pb-24' : ''}`}>
         {!isAuthPage && <Navbar />}
 
         <Routes>
           {/* Protected Main Routes */}
-          <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/" element={
+            loading ? (
+              <div className="flex h-screen items-center justify-center">
+                <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : user ? (
+              <ProtectedRoute><Home /></ProtectedRoute>
+            ) : (
+              <Landing />
+            )
+          } />
           <Route path="/stories" element={<ProtectedRoute><Stories /></ProtectedRoute>} />
           <Route path="/story/:id" element={<ProtectedRoute><StoryDetails /></ProtectedRoute>} />
-          <Route path="/ai" element={<ProtectedRoute><AI /></ProtectedRoute>} />
+          <Route path="/bookmarks" element={<ProtectedRoute><Bookmarks /></ProtectedRoute>} />
           <Route path="/ai/:storyId" element={<ProtectedRoute><AI /></ProtectedRoute>} />
+          <Route path="/quiz" element={<ProtectedRoute><QuizHistory /></ProtectedRoute>} />
           <Route path="/quiz/:storyId" element={<ProtectedRoute><Quiz /></ProtectedRoute>} />
 
           {/* Quran */}
@@ -106,10 +123,23 @@ function AppContent() {
   );
 }
 
+import { useEffect } from "react";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <AppContent />
       </BrowserRouter>
     </AuthProvider>

@@ -1,89 +1,71 @@
 import { useState } from "react";
 import LoginForm from "../components/Auth/LoginForm";
-import { Moon, Sparkles, ShieldCheck } from "lucide-react";
+import { ShieldCheck, ArrowLeft, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
 function AdminLogin() {
   return (
-    <div className="h-screen flex items-center justify-center p-4 md:p-8 bg-[#050b18] relative overflow-hidden">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-[#020617] relative overflow-hidden font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
       
-      {/* Background ambient glow */}
-      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen translate-x-1/3 -translate-y-1/3"></div>
-      <div className="absolute bottom-0 left-0 w-[800px] h-[800px] bg-amber-500/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen -translate-x-1/3 translate-y-1/3"></div>
-
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 bg-[#0a1128]/80 backdrop-blur-2xl border border-white/5 rounded-[2rem] shadow-2xl relative z-10 max-h-[90vh] overflow-hidden animate-fade-in-up">
+      {/* Modern Professional Background */}
+      <div className="absolute inset-0 z-0">
+        {/* Subtle Grid Pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:32px_32px]"></div>
         
-        {/* Mobile-only Header */}
-        <div className="lg:hidden flex flex-col items-center justify-center pt-10 pb-4 px-6 text-center border-b border-white/5 bg-gradient-to-br from-indigo-900/20 to-[#0a1128]">
-          <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mb-4">
-            <Moon className="text-amber-400 w-8 h-8 fill-amber-400/20 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]" />
+        {/* Deep Mesh Gradient Orbs (Admin themed - deeper blues/purples) */}
+        <div className="absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-indigo-900/40 rounded-full blur-[150px] pointer-events-none mix-blend-screen animate-pulse-slow"></div>
+        <div className="absolute bottom-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-blue-900/30 rounded-full blur-[150px] pointer-events-none mix-blend-screen animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-[30%] right-[50%] w-[40vw] h-[40vw] bg-violet-900/30 rounded-full blur-[150px] pointer-events-none mix-blend-screen animate-pulse" style={{ animationDelay: '4s' }}></div>
+        
+        {/* Noise overlay for texture */}
+        <div className="absolute inset-0 opacity-[0.015] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
+      </div>
+      
+      {/* Back Button - Top Left Screen */}
+      <Link 
+        to="/" 
+        className="absolute top-6 left-6 sm:top-10 sm:left-10 z-50 flex items-center gap-2 text-slate-400 hover:text-white bg-white/[0.02] hover:bg-white/[0.08] px-4 py-2 rounded-full backdrop-blur-md border border-white/5 transition-all duration-300 group hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+      >
+        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> 
+        <span className="text-sm font-bold">Back to Home</span>
+      </Link>
+
+      {/* Center Form Card */}
+      <div className="w-full max-w-md bg-white/[0.03] backdrop-blur-2xl border border-white/10 rounded-[2.5rem] shadow-[0_0_80px_rgba(0,0,0,0.8)] relative z-10 overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700 p-8 sm:p-10 group/card hover:border-white/20 transition-colors duration-500 mt-10 mb-10">
+        
+        {/* Glowing border top (Admin themed - indigo) */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-30 group-hover/card:opacity-100 transition-opacity duration-700"></div>
+        
+        <div className="flex flex-col items-center mb-8 relative z-10">
+          <div className="mb-5 group-hover/card:scale-110 group-hover/card:rotate-[2deg] transition-transform duration-500">
+            <img 
+              src="/logo.jpg" 
+              alt="NoorKids Logo" 
+              className="w-16 h-16 rounded-2xl shadow-[0_0_30px_rgba(99,102,241,0.3)] border border-white/20 object-cover"
+            />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-black text-white tracking-tight mb-2 text-center">
             Admin Portal
           </h1>
-          <p className="text-slate-400 text-sm">
-            Log in with administrative credentials
+          <p className="text-slate-400 text-sm font-medium text-center">
+            Secure access to manage the NoorKids platform.
           </p>
         </div>
 
-        {/* Left Side - Form Area */}
-        <div className="p-6 md:p-10 lg:p-12 flex flex-col justify-center relative overflow-y-auto custom-scrollbar">
-          <div className="max-w-sm w-full mx-auto">
-            
-            {/* Desktop-only Title */}
-            <div className="hidden lg:block mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2 tracking-tight flex items-center gap-3">
-                <ShieldCheck className="text-indigo-400 w-8 h-8" />
-                Admin Portal
-              </h1>
-              <p className="text-slate-400 text-sm">
-                Log in with your administrative credentials to manage content and users.
-              </p>
-            </div>
-
-            <LoginForm isAdminMode={true} />
-
-            <div className="mt-8 pt-6 border-t border-white/5 text-center">
-              <Link 
-                to="/login"
-                className="text-xs text-slate-500 hover:text-indigo-400 transition-colors flex items-center justify-center gap-2 mx-auto"
-              >
-                Go to User Login
-              </Link>
-            </div>
-          </div>
+        {/* The Form Itself */}
+        <div className="relative">
+          <LoginForm isAdminMode={true} />
         </div>
-
-        {/* Right Side - Brand Moment (Desktop Only) */}
-        <div className="hidden lg:flex flex-col items-center justify-center relative p-8 bg-gradient-to-br from-indigo-900/30 via-[#0a1128] to-amber-900/10 border-l border-white/5 overflow-hidden">
-          
-          {/* Animated Night Sky Elements */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/5 via-transparent to-transparent opacity-80"></div>
-          
-          <div className="relative w-full max-w-sm flex flex-col items-center text-center z-10">
-            
-            {/* Glowing Moon Illustration */}
-            <div className="relative w-36 h-36 mx-auto flex items-center justify-center mb-10 animate-pulse-slow">
-              <div className="absolute inset-0 bg-amber-500/20 rounded-full blur-3xl"></div>
-              <Moon className="w-32 h-32 text-amber-400 drop-shadow-[0_0_40px_rgba(251,191,36,0.6)] fill-amber-400/20 z-10" strokeWidth={1.5} />
-              <Sparkles className="absolute -top-4 -right-4 w-10 h-10 text-amber-300 animate-pulse" />
-              <Sparkles className="absolute bottom-4 left-4 w-6 h-6 text-indigo-300 animate-pulse delay-700" />
-            </div>
-
-            {/* Brand Text */}
-            <h2 className="text-2xl font-semibold text-white mb-3">
-              Nurturing Little Hearts
-            </h2>
-            <p className="text-slate-400 text-sm leading-relaxed max-w-xs mx-auto mb-8">
-              NoorKids empowers your children with engaging stories, interactive quizzes, and AI-guided learning.
-            </p>
-
-            {/* Navigation back home */}
-            <Link to="/" className="text-amber-500 hover:text-amber-400 transition-colors text-sm font-medium flex items-center gap-2 group">
-              <span className="group-hover:-translate-x-1 transition-transform">←</span> Return to Home
-            </Link>
-
-          </div>
+        
+        {/* Link back to User Login */}
+        <div className="mt-8 pt-6 border-t border-white/5 text-center">
+          <Link 
+            to="/login"
+            className="inline-flex items-center justify-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-400 transition-colors px-4 py-2 rounded-lg hover:bg-indigo-500/10 group/user"
+          >
+            <Users size={14} className="group-hover/user:-translate-x-1 transition-transform" />
+            Return to User Login
+          </Link>
         </div>
 
       </div>

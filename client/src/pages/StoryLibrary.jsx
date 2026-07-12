@@ -12,10 +12,11 @@ function StoryLibrary() {
     fetch("http://localhost:5000/api/stories")
       .then(res => res.json())
       .then(data => {
+        const sortedData = [...data].sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }));
         const featured = [];
         const usedHues = new Set();
         
-        for (const story of data) {
+        for (const story of sortedData) {
           if (featured.length === 3) break;
           
           // Calculate the approximate hue used in StoryCard
@@ -31,7 +32,7 @@ function StoryLibrary() {
         
         // Fallback: fill the rest if we couldn't find 3 distinct ones
         if (featured.length < 3) {
-           const remaining = data.filter(d => !featured.some(f => f.id === d.id));
+           const remaining = sortedData.filter(d => !featured.some(f => f.id === d.id));
            featured.push(...remaining.slice(0, 3 - featured.length));
         }
 

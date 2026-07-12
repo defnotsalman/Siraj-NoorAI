@@ -2,6 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import OpenAI from 'openai';
 import { fileURLToPath } from 'url';
+import { z } from 'zod';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,8 +27,22 @@ function cosineSimilarity(vecA, vecB) {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
+// Input validation schema (Security Feature: Category 9)
+const askAiSchema = z.object({
+  storyId: z.string().max(100),
+  question: z.string().max(500),
+  conversationHistory: z.array(z.any()).optional(),
+  language: z.string().max(50).optional()
+});
+
 export const askAi = async (req, res) => {
-  const { storyId, question, conversationHistory = [] } = req.body;
+  const { success, data, error } = askAiSchema.safeParse(req.body);
+  
+  if (!success) {
+    return res.status(400).json({ error: "Invalid input. Questions must be under 500 characters." });
+  }
+
+  const { storyId, question, conversationHistory = [], language = "Urdu" } = data;
 
   if (!storyId || !question) {
     return res.status(200).json({ 
@@ -68,6 +83,15 @@ export const askAi = async (req, res) => {
        retrievedContext = story.chunks.slice(0, 3).map(c => c.text).join('\n\n');
     }
 
+    let languageInstruction = "";
+    if (language === "Urdu") {
+      languageInstruction = "CRITICAL: You MUST reply entirely in the Urdu language using the Urdu script (Nastaliq/Arabic letters like یہ ایک کہانی ہے). EVEN IF the user asks in Roman English, you MUST reply in pure Urdu script. DO NOT use Roman Urdu (like 'yeh kahani hai'). DO NOT use English.";
+    } else if (language === "Roman Urdu" || language === "Roman English") {
+      languageInstruction = "CRITICAL: You MUST reply entirely in Roman Urdu / Roman English (Urdu written using the English alphabet). Do not use Arabic script.";
+    } else {
+      languageInstruction = "CRITICAL: You MUST reply entirely in English.";
+    }
+
     const systemPrompt = `You are "Noor", a gentle, patient AI companion inside the NoorKids app, helping a child understand ONE specific Islamic story: "${story.title}".
 
 STORY CONTEXT (this is your only source of truth for this story):
@@ -78,7 +102,7 @@ ${retrievedContext}
 RULES YOU MUST FOLLOW:
 1. Answer ONLY using the story context above. If the child asks an irrelevant question or something the story doesn't cover, you MUST simply reply with: "This is irrelevant to the story." Do not try to relate it to the story, and do not invent details.
 2. Speak like a warm, encouraging teacher talking to a child aged 5–10: short sentences, simple vocabulary, no complex theological jargon. You MUST NOT use any emojis under any circumstances.
-3. Reply in the SAME language the child used (Urdu or English). If responding in Urdu, you MUST use pure Urdu script (Nastaliq/Arabic characters). NEVER use Hindi (Devanagari) characters or mix Hindi letters into Urdu words (e.g., use 'ٹھنڈی' not 'ٹठنڈی').
+3. ${languageInstruction}
 4. If asked about topics unrelated to this story or to Islamic values generally (violence, other religions, personal/private user data, anything scary, adult, or companies/brands), you MUST reply: "This is irrelevant to the story."
 5. Never discuss sensitive theological disputes.
 6. Keep answers short: 2–5 sentences unless the child explicitly asks for more detail.
@@ -91,10 +115,9 @@ RULES YOU MUST FOLLOW:
       ...conversationHistory.map(m => ({ 
         role: m.sender === 'ai' ? 'assistant' : 'user', 
         content: m.message 
-      })),
-      { role: 'user', content: question }
+      }))
     ];
-    
+
     // Trim history to prevent huge token usage
     if (groqMessages.length > 12) {
        // Keep system prompt, trim the middle history
@@ -104,6 +127,9 @@ RULES YOU MUST FOLLOW:
        groqMessages.push(sys, ...trimmed);
     }
 
+    // Force language instruction right before user prompt for maximum LLM obedience
+    groqMessages.push({ role: 'system', content: languageInstruction });
+    groqMessages.push({ role: 'user', content: question });
     let answer = "I'm having a little trouble thinking right now, but let's try again soon!";
     
     if (process.env.GROQ_API_KEY) {
@@ -139,6 +165,7 @@ RULES YOU MUST FOLLOW:
   } catch (error) {
     console.error('AI Controller Error:', error);
     // Return 200 so the frontend displays the error in the chat bubble!
-    res.status(200).json({ answer: `[DEBUG BACKEND ERROR]: ${error.message || error}`, storyId });
+    // SECURITY: Masking original error message to avoid leaking internals (Category 5)
+    res.status(200).json({ answer: `I'm having a little trouble thinking right now! Please try again later.`, storyId });
   }
 };

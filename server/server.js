@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -9,6 +10,7 @@ import storiesRoutes from "./routes/stories.js";
 import quizRoutes from "./routes/quiz.js";
 import quranRoutes from "./routes/quran.js";
 import adminRoutes from "./routes/admin.js";
+import reviewsRoutes from "./routes/reviews.js";
 
 const app = express();
 
@@ -24,11 +26,32 @@ app.get("/", (req, res) => {
   res.send("🚀 NoorKids AI Server Running");
 });
 
-app.use("/api/ai", aiRoutes);
-app.use("/api/stories", storiesRoutes);
-app.use("/api/quiz", quizRoutes);
-app.use("/api/quran", quranRoutes);
-app.use("/api/admin", adminRoutes);
+// Configure Rate Limiters (Security Feature: Category 7)
+// We use a simple in-memory limiter here, but Redis is recommended for multi-instance deployments.
+const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // limit each IP to 20 AI requests per windowMs
+  message: { error: "Too many AI requests from this IP, please try again after 15 minutes." }
+});
+
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  message: { error: "Too many admin requests from this IP, please try again after 15 minutes." }
+});
+
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 150,
+  message: { error: "Too many requests from this IP, please try again after 15 minutes." }
+});
+
+app.use("/api/ai", aiLimiter, aiRoutes);
+app.use("/api/stories", generalLimiter, storiesRoutes);
+app.use("/api/quiz", generalLimiter, quizRoutes);
+app.use("/api/quran", generalLimiter, quranRoutes);
+app.use("/api/admin", adminLimiter, adminRoutes);
+app.use("/api/reviews", generalLimiter, reviewsRoutes);
 
 const PORT = 5000;
 

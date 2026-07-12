@@ -8,12 +8,13 @@ import { Loader2, AlertCircle, ArrowLeft, Trophy, Star, BookOpen, CheckCircle2, 
 function Quiz() {
   const { storyId } = useParams();
   const navigate = useNavigate();
-  const { user, profile } = useContext(AuthContext);
+  const { user, profile, refreshProfile } = useContext(AuthContext);
   
   const [quizData, setQuizData] = useState(null);
   const [story, setStory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [lang, setLang] = useState('ur');
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null);
@@ -31,7 +32,7 @@ function Quiz() {
         setLoading(true);
         // Fetch both quiz and story metadata
         const [quiz, storyRes] = await Promise.all([
-          getQuiz(storyId),
+          getQuiz(storyId, lang),
           fetch(`http://localhost:5000/api/stories/${storyId}`).then(r => r.ok ? r.json() : null)
         ]);
         
@@ -48,7 +49,34 @@ function Quiz() {
       }
     }
     loadData();
-  }, [storyId]);
+  }, [storyId, lang]);
+
+  // Load saved progress
+  useEffect(() => {
+    if (quizData && user) {
+      const savedState = localStorage.getItem(`quizState_${user.id}_${storyId}`);
+      if (savedState) {
+        try {
+          const { savedIndex, savedResults } = JSON.parse(savedState);
+          setCurrentQuestionIndex(savedIndex || 0);
+          setAllResults(savedResults || []);
+        } catch(e) {}
+      }
+    }
+  }, [quizData, user, storyId]);
+
+  // Save progress on change
+  useEffect(() => {
+    if (user && storyId && !isFinished) {
+      // Only save if they actually started the quiz (index > 0 or they answered the first question)
+      if (currentQuestionIndex > 0 || allResults.length > 0) {
+        localStorage.setItem(`quizState_${user.id}_${storyId}`, JSON.stringify({
+          savedIndex: currentQuestionIndex,
+          savedResults: allResults
+        }));
+      }
+    }
+  }, [currentQuestionIndex, allResults, user, storyId, isFinished]);
 
   const handleOptionSelect = async (index) => {
     if (feedback || isSubmitting) return; 
@@ -58,7 +86,7 @@ function Quiz() {
     const questionId = quizData.questions[currentQuestionIndex].id;
     
     try {
-      const response = await submitQuiz(storyId, [{ questionId, selectedIndex: index }]);
+      const response = await submitQuiz(storyId, [{ questionId, selectedIndex: index }], lang);
       const result = response.results[0];
       setFeedback(result);
       setAllResults(prev => [...prev, result]);
@@ -85,6 +113,9 @@ function Quiz() {
     setFeedback(null);
     setAllResults([]);
     setIsFinished(false);
+    if (user) {
+      localStorage.removeItem(`quizState_${user.id}_${storyId}`);
+    }
   };
 
   // --- RESULTS SCREEN EFFECT ---
@@ -99,7 +130,8 @@ function Quiz() {
       
       // Calculate streak
       const today = new Date().toISOString().split('T')[0];
-      const lastRead = profile.lastReadDate ? new Date(profile.lastReadDate).toISOString().split('T')[0] : null;
+      const storedLastRead = localStorage.getItem(`lastReadDate_${user.id}`);
+      const lastRead = storedLastRead ? new Date(storedLastRead).toISOString().split('T')[0] : null;
       
       let newStreak = profile.streak || 0;
       if (lastRead !== today) {
@@ -114,18 +146,37 @@ function Quiz() {
         }
       }
       
-      // Mark quiz as completed in localStorage
+      // Mark quiz as completed in localStorage (legacy simple array)
       const finishedQuizzes = JSON.parse(localStorage.getItem('completedQuizzes') || '[]');
       if (!finishedQuizzes.includes(storyId)) {
         localStorage.setItem('completedQuizzes', JSON.stringify([...finishedQuizzes, storyId]));
       }
+
+      // Save detailed quiz record for the history page
+      const quizRecords = JSON.parse(localStorage.getItem('quizRecords') || '[]');
+      const newRecord = {
+        storyId,
+        title: story ? story.title : "Story Quiz",
+        score,
+        total: quizData.questions.length,
+        date: new Date().toISOString()
+      };
+      localStorage.setItem('quizRecords', JSON.stringify([newRecord, ...quizRecords]));
       
+      // Save lastReadDate locally since the db column is missing
+      localStorage.setItem(`lastReadDate_${user.id}`, new Date().toISOString());
+
+      // Clear the saved progress so they can retake from scratch next time
+      localStorage.removeItem(`quizState_${user.id}_${storyId}`);
+
       updateUserProfile(user.id, {
         xp: (profile.xp || 0) + earnedXp,
-        storiesRead: (profile.storiesRead || 0) + 1,
-        streak: newStreak,
-        lastReadDate: new Date().toISOString()
-      }).catch(err => console.error("Failed to save progress", err));
+        streak: newStreak
+      })
+      .then(() => {
+        if (refreshProfile) refreshProfile();
+      })
+      .catch(err => console.error("Failed to save progress", err));
     }
   }, [isFinished, hasSavedProgress, profile, allResults, user?.id, storyId]);
 
@@ -217,17 +268,45 @@ function Quiz() {
   const progressPercent = ((currentQuestionIndex) / quizData.questions.length) * 100;
 
   return (
-    <div className="max-w-3xl mx-auto p-4 md:p-10 mt-4 md:mt-8">
+    <div className="max-w-3xl mx-auto p-4 md:px-6 md:py-4 mt-2 md:mt-4">
       
       {/* Header */}
-      <div className="mb-8 text-white">
-        <h1 className="text-2xl md:text-3xl font-bold text-amber-400 mb-4 flex items-center gap-3">
-          <BookOpen className="text-amber-400" /> {story ? story.title : "Quiz"}
+      <div className="mb-4 text-white">
+        <h1 className="text-xl md:text-2xl font-bold text-amber-400 mb-2 flex items-center gap-2">
+          <BookOpen className="text-amber-400" size={20} /> {story ? story.title : "Quiz"}
         </h1>
-        <div className="flex justify-between items-center text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider">
+        <div className="flex justify-between items-center text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
           <span>Question {currentQuestionIndex + 1} of {quizData.questions.length}</span>
+          
+          {/* Language Toggle */}
+          <div className="flex bg-white/10 rounded-lg p-1 border border-white/5 shadow-inner scale-90 origin-right">
+            <button
+              onClick={() => {
+                if (lang !== 'ur') {
+                  setLang('ur');
+                  setFeedback(null);
+                  setSelectedOption(null);
+                }
+              }}
+              className={`px-3 py-1 rounded-md transition-all text-xs font-bold ${lang === 'ur' ? 'bg-amber-500 text-slate-900 shadow-sm' : 'text-slate-400 hover:text-white'}`}
+            >
+              اردو
+            </button>
+            <button
+              onClick={() => {
+                if (lang !== 'en') {
+                  setLang('en');
+                  setFeedback(null);
+                  setSelectedOption(null);
+                }
+              }}
+              className={`px-3 py-1 rounded-md transition-all text-xs font-bold ${lang === 'en' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+            >
+              EN
+            </button>
+          </div>
         </div>
-        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden border border-white/5">
+        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden border border-white/5">
           <div 
             className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500 ease-out"
             style={{ width: `${progressPercent}%` }}
@@ -236,12 +315,12 @@ function Quiz() {
       </div>
 
       {/* Question Card */}
-      <div className="glass-panel rounded-[2.5rem] p-6 md:p-10 text-white" dir="auto">
-        <h2 className="text-2xl md:text-3xl font-bold mb-10 leading-snug text-slate-100">
+      <div className="bg-slate-900/95 border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.3)] backdrop-blur-none rounded-[2rem] p-5 md:p-8 text-white" dir={lang === 'ur' ? 'rtl' : 'ltr'}>
+        <h2 className={`text-xl md:text-2xl font-bold mb-6 leading-snug text-slate-100 text-start ${lang === 'ur' ? 'font-urdu' : 'font-sans'}`}>
           {currentQuestion.question}
         </h2>
 
-        <div className="flex flex-col gap-4 mb-8">
+        <div className="flex flex-col gap-3 mb-4">
           {currentQuestion.options.map((opt, index) => {
             
             let btnClass = "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 text-slate-200";
@@ -258,23 +337,19 @@ function Quiz() {
                 btnClass = "bg-white/5 opacity-40 border-transparent text-slate-400"; 
               }
             } else if (selectedOption === index) {
-              btnClass = "bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.2)] scale-[1.02]";
+              btnClass = "bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.2)] scale-[1.01]";
             }
 
             return (
               <button
                 key={index}
                 onClick={() => handleOptionSelect(index)}
-                disabled={!!feedback || isSubmitting}
-                className={`
-                  w-full flex items-center justify-between p-5 rounded-2xl border-2 text-lg md:text-xl font-medium
-                  transition-all duration-300 ease-out
-                  ${btnClass}
-                `}
-                dir="auto"
+                disabled={feedback !== null || isSubmitting}
+                className={`relative w-full text-start px-5 py-3 rounded-xl border-2 transition-all ${btnClass} ${lang === 'ur' ? 'font-urdu text-base' : 'font-sans text-sm font-medium'}`}
+                dir={lang === 'ur' ? 'rtl' : 'ltr'}
               >
                 <span>{opt}</span>
-                {Icon && <Icon className="shrink-0 ml-4" />}
+                {Icon && <Icon className="shrink-0 ml-3" size={18} />}
               </button>
             );
           })}
@@ -282,16 +357,27 @@ function Quiz() {
 
         {/* Feedback Section */}
         {feedback && (
-          <div className={`p-6 rounded-2xl mb-8 border animate-in fade-in slide-in-from-bottom-4 duration-300 ${feedback.correct ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-rose-500/10 border-rose-500/30'}`}>
-            <h3 className={`text-xl md:text-2xl font-bold mb-3 flex items-center gap-2 ${feedback.correct ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {feedback.correct ? (
-                <><Star className="fill-emerald-400" /> Brilliant!</>
-              ) : (
-                <><BookOpen /> Let's learn!</>
-              )}
-            </h3>
-            <p className="text-lg md:text-xl text-slate-200 leading-relaxed font-medium">{feedback.explanation}</p>
-          </div>
+          <div className={`mt-4 p-4 rounded-xl border-2 animate-in fade-in slide-in-from-bottom-2 ${
+              feedback.correct 
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-100' 
+                : 'bg-red-500/10 border-red-500/20 text-red-100'
+            }`}>
+              <div className="flex items-start gap-3">
+                <div className={`mt-0.5 shrink-0 ${feedback.correct ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {feedback.correct ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
+                </div>
+                <div>
+                  <h3 className={`text-base font-bold mb-1 ${feedback.correct ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {feedback.correct 
+                      ? (lang === 'ur' ? 'بہت خوب! صحیح جواب!' : 'Awesome! Correct Answer!') 
+                      : (lang === 'ur' ? 'غلط جواب!' : 'Incorrect!')}
+                  </h3>
+                  <p className={`text-slate-300 leading-snug ${lang === 'ur' ? 'font-urdu text-base' : 'font-sans text-sm'}`}>
+                    {feedback.explanation}
+                  </p>
+                </div>
+              </div>
+            </div>
         )}
 
         {/* Action Button */}
@@ -299,7 +385,7 @@ function Quiz() {
           {feedback && (
             <button
               onClick={handleNextQuestion}
-              className="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 px-8 py-4 rounded-full text-lg font-bold hover:scale-105 transition-all shadow-lg flex items-center gap-2"
+              className="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 px-6 py-2.5 rounded-full text-base font-bold hover:scale-105 transition-all shadow-md flex items-center gap-2"
             >
               {currentQuestionIndex < quizData.questions.length - 1 ? "Next Question" : "See Results"}
             </button>

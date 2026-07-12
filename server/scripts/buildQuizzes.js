@@ -87,6 +87,38 @@ export async function generateQuizForStory(story, storyText) {
   return parsed;
 }
 
+export async function translateQuizToEnglish(quizData) {
+  const groqApiKey = process.env.GROQ_API_KEY;
+  if (!groqApiKey) throw new Error("GROQ_API_KEY is not defined in .env");
+
+  const systemPrompt = `You are an expert translator. Your task is to translate the provided JSON quiz from Urdu to English. 
+You must return the EXACT same JSON structure, keeping all keys (id, question, options, correctIndex, explanation, storyId) identical.
+Only translate the values for 'question', 'options' (array of strings), and 'explanation'.
+Output ONLY valid raw JSON without any markdown formatting, backticks, or conversational text.`;
+
+  const userPrompt = JSON.stringify(quizData);
+
+  const response = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqApiKey}` },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.1
+    })
+  });
+
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message);
+
+  let rawContent = data.choices[0].message.content;
+  rawContent = rawContent.replace(/^```json\s*/i, '').replace(/\s*```$/i, '');
+  return JSON.parse(rawContent);
+}
+
 export async function generateQuiz(storyId) {
   await fs.ensureDir(QUIZ_DIR);
   
@@ -102,6 +134,7 @@ export async function generateQuiz(storyId) {
   }
 
   const quizPath = path.join(QUIZ_DIR, `${story.id}.json`);
+  const enQuizPath = path.join(QUIZ_DIR, `${story.id}_en.json`);
   const indexPath = path.join(INDEX_DIR, `${story.slug}.json`);
   
   if (!await fs.pathExists(indexPath)) {
@@ -121,6 +154,16 @@ export async function generateQuiz(storyId) {
   }
 
   await fs.writeJson(quizPath, quizData, { spaces: 2 });
+  
+  // Also generate and save English version
+  try {
+    console.log(`Translating quiz for ${storyId} to English...`);
+    const enQuizData = await translateQuizToEnglish(quizData);
+    await fs.writeJson(enQuizPath, enQuizData, { spaces: 2 });
+  } catch (err) {
+    console.warn(`⚠️ Failed to translate quiz to English: ${err.message}`);
+  }
+
   return quizData;
 }
 

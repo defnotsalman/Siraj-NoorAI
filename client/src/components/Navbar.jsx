@@ -1,11 +1,31 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import UserMenu from "./Auth/UserMenu";
-import { BookOpen, Sparkles, Brain, Home, BookHeart } from 'lucide-react';
+import { BookOpen, Sparkles, Brain, Home, BookHeart, Bookmark } from 'lucide-react';
 
 function Navbar() {
   const { user } = useAuth();
   const location = useLocation();
+  const [pendingQuizCount, setPendingQuizCount] = useState(0);
+
+  useEffect(() => {
+    const checkPending = () => {
+      const completedStories = JSON.parse(localStorage.getItem('completedStories') || '[]');
+      const completedQuizzes = JSON.parse(localStorage.getItem('completedQuizzes') || '[]');
+      const pending = completedStories.filter(id => !completedQuizzes.includes(id));
+      setPendingQuizCount(pending.length);
+    };
+
+    checkPending();
+    window.addEventListener('focus', checkPending);
+    // Also listen to local storage changes from other tabs/components
+    window.addEventListener('storage', checkPending);
+    return () => {
+      window.removeEventListener('focus', checkPending);
+      window.removeEventListener('storage', checkPending);
+    };
+  }, []);
 
   const navLinkClass = (path) => {
     const isActive = location.pathname === path;
@@ -22,7 +42,11 @@ function Navbar() {
           to="/"
           className="flex items-center gap-3 text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-500 hover:scale-105 transition-transform duration-300"
         >
-          <span className="text-2xl text-amber-400 drop-shadow-lg">🌙</span>
+          <img 
+            src="/logo.jpg" 
+            alt="NoorKids" 
+            className="w-10 h-10 rounded-[12px] shadow-lg object-cover"
+          />
           NoorKids
         </Link>
 
@@ -38,11 +62,14 @@ function Navbar() {
               <Link to="/quran" className={navLinkClass("/quran")}>
                 <BookHeart size={18} /> Quran
               </Link>
-              <Link to="/ai" className={navLinkClass("/ai")}>
-                <Sparkles size={18} /> Ask AI
+              <Link to="/bookmarks" className={navLinkClass("/bookmarks")}>
+                <Bookmark size={18} /> Bookmarks
               </Link>
-              <Link to="/quiz" className={navLinkClass("/quiz")}>
+              <Link to="/quiz" className={`relative ${navLinkClass("/quiz")}`}>
                 <Brain size={18} /> Quiz
+                {pendingQuizCount > 0 && (
+                  <span className="absolute top-1 right-2 w-2.5 h-2.5 bg-amber-400 rounded-full border border-slate-900 animate-pulse"></span>
+                )}
               </Link>
               <div className="ml-4 pl-4 border-l border-white/10">
                 <UserMenu />

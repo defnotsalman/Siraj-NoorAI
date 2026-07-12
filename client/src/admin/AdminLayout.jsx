@@ -18,14 +18,14 @@ const AdminLayout = ({ children }) => {
     { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { label: 'Stories', path: '/admin/stories', icon: BookOpen },
     { label: 'Users', path: '/admin/users', icon: Users },
-    { label: 'Chat Logs', path: '/admin/chat-logs', icon: MessageSquare },
+    { label: 'Reviews', path: '/admin/reviews', icon: MessageSquare },
   ];
 
   return (
-    <div className={`admin-portal ${adminTheme === 'dark' ? 'admin-dark' : ''} min-h-screen bg-[var(--admin-bg)] text-[var(--admin-text-primary)] flex flex-col md:flex-row font-sans relative overflow-hidden transition-colors duration-300`}>
+    <div className={`admin-portal ${adminTheme === 'dark' ? 'admin-dark' : ''} h-screen w-full bg-[var(--admin-bg)] text-[var(--admin-text-primary)] flex flex-col md:flex-row font-sans relative overflow-hidden transition-colors duration-300`}>
       
       {/* Mobile Header */}
-      <div className="md:hidden bg-[var(--admin-surface)] text-[var(--admin-text-primary)] p-4 flex justify-between items-center shadow-[0_4px_20px_rgba(0,0,0,0.05)] z-20 relative border-b border-[var(--admin-border)] transition-colors duration-300">
+      <div className="md:hidden bg-[var(--admin-surface)] text-[var(--admin-text-primary)] p-4 flex justify-between items-center shadow-[0_4px_20px_rgba(0,0,0,0.05)] z-20 relative border-b border-[var(--admin-border)] transition-colors duration-300 flex-shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-400 shadow-md shadow-indigo-500/20 p-[2px]">
             <div className="w-full h-full bg-white rounded-md flex items-center justify-center overflow-hidden">
@@ -43,7 +43,7 @@ const AdminLayout = ({ children }) => {
       <aside
         className={`${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0 fixed md:sticky md:top-0 inset-y-0 left-0 w-64 h-screen bg-[var(--admin-surface)] border-r border-[var(--admin-border)] z-30 transition-all duration-300 ease-in-out flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.05)]`}
+        } md:translate-x-0 fixed md:relative inset-y-0 left-0 w-64 h-full flex-shrink-0 bg-[var(--admin-surface)] border-r border-[var(--admin-border)] z-30 transition-all duration-300 ease-in-out flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.05)]`}
       >
         <div className="hidden md:flex flex-col items-center justify-center border-b border-[var(--admin-border)] w-full bg-[var(--admin-surface)]">
           {/* Logo Container */}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, Info } from 'lucide-react';
+import { ArrowLeft, Loader2, Info, DownloadCloud, CheckCircle2 } from 'lucide-react';
 import AudioPlayer from '../components/AudioPlayer';
 import PracticeRecitation from '../components/Quran/PracticeRecitation';
 
@@ -42,7 +42,11 @@ export default function SurahDetails() {
   const [surah, setSurah] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState('en'); // 'en' or 'ur'
-  const [showLegend, setShowLegend] = useState(false);
+  const [showLegend, setShowLegend] = useState(true);
+  
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloaded, setIsDownloaded] = useState(false);
 
   useEffect(() => {
     fetch(`http://localhost:5000/api/quran/surah/${id}`)
@@ -55,7 +59,58 @@ export default function SurahDetails() {
         console.error("Failed to load surah:", err);
         setLoading(false);
       });
+      
+    // Check if this surah is already cached
+    if ('caches' in window) {
+      caches.open('quran-data').then(cache => {
+        cache.match(`http://localhost:5000/api/quran/surah/${id}`).then(response => {
+          if (response) setIsDownloaded(true);
+        });
+      });
+    }
   }, [id]);
+
+  const handleDownload = async () => {
+    if (!surah || isDownloading) return;
+    try {
+      setIsDownloading(true);
+      setDownloadProgress(0);
+      
+      const totalAyahs = surah.ayahs.length;
+      let completed = 0;
+
+      // Ensure JSON data is cached (usually Workbox NetworkFirst does this, but we explicitly cache it to be safe)
+      if ('caches' in window) {
+        const dataCache = await caches.open('quran-data');
+        await dataCache.add(`http://localhost:5000/api/quran/surah/${id}`);
+      }
+
+      // Download all audio files in parallel batches (e.g. 5 at a time) to avoid browser limitations
+      const audioUrls = surah.ayahs.map(a => a.audio);
+      
+      const batchSize = 5;
+      for (let i = 0; i < audioUrls.length; i += batchSize) {
+        const batch = audioUrls.slice(i, i + batchSize);
+        await Promise.all(batch.map(async (url) => {
+          try {
+            // Making a fetch request allows Workbox CacheFirst runtime rule to intercept and cache it
+            await fetch(url, { mode: 'no-cors' });
+          } catch (e) {
+            console.error("Failed to fetch audio for cache", url, e);
+          }
+          completed++;
+          setDownloadProgress(Math.round((completed / totalAyahs) * 100));
+        }));
+      }
+
+      setIsDownloaded(true);
+    } catch (err) {
+      console.error("Download failed", err);
+    } finally {
+      setIsDownloading(false);
+      setTimeout(() => setDownloadProgress(0), 2000);
+    }
+  };
 
   if (loading) {
     return (
@@ -82,18 +137,38 @@ export default function SurahDetails() {
           <p className="text-amber-400 mb-4 relative z-10">{surah.englishNameTranslation} • {surah.revelationType}</p>
           <h2 className="text-4xl md:text-5xl font-nastaliq text-white opacity-90 relative z-10">{surah.name}</h2>
           
-          <div className="flex items-center justify-center gap-4 mt-6 relative z-10">
-            <button 
-              onClick={() => setLang('en')}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${lang === 'en' ? 'bg-amber-500 text-slate-900' : 'bg-[#141824] text-slate-400 hover:text-white'}`}
+          <div className="flex items-center justify-center gap-4 mt-6 relative z-10 flex-wrap">
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setLang('en')}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${lang === 'en' ? 'bg-amber-500 text-slate-900' : 'bg-[#141824] text-slate-400 hover:text-white'}`}
+              >
+                English
+              </button>
+              <button 
+                onClick={() => setLang('ur')}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${lang === 'ur' ? 'bg-amber-500 text-slate-900' : 'bg-[#141824] text-slate-400 hover:text-white'}`}
+              >
+                Urdu
+              </button>
+            </div>
+            
+            <button
+              onClick={handleDownload}
+              disabled={isDownloaded || isDownloading}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                isDownloaded ? 'bg-emerald-500/20 text-emerald-400 cursor-default' : 
+                isDownloading ? 'bg-amber-500/20 text-amber-400 cursor-wait' : 
+                'bg-[#141824] text-slate-300 hover:bg-[#1a2035] hover:text-white border border-white/10'
+              }`}
             >
-              English
-            </button>
-            <button 
-              onClick={() => setLang('ur')}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${lang === 'ur' ? 'bg-amber-500 text-slate-900' : 'bg-[#141824] text-slate-400 hover:text-white'}`}
-            >
-              Urdu
+              {isDownloaded ? (
+                <><CheckCircle2 size={16} /> Saved Offline</>
+              ) : isDownloading ? (
+                <><Loader2 size={16} className="animate-spin" /> {downloadProgress}% Downloading...</>
+              ) : (
+                <><DownloadCloud size={16} /> Download Offline</>
+              )}
             </button>
           </div>
         </div>

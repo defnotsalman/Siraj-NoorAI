@@ -7,6 +7,7 @@ import { generateAudio } from '../scripts/buildAudio.js';
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { z } from 'zod';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,11 +62,19 @@ export const uploadStory = async (req, res) => {
   }
 };
 
+// Input validation schema (Security Feature: Category 9)
+const processStorySchema = z.object({
+  storagePath: z.string().max(255),
+  title: z.string().max(200).optional()
+});
+
 export const processStoryJob = async (req, res) => {
-  const { storagePath, title } = req.body;
-  if (!storagePath) {
-    return res.status(400).json({ error: "Missing storagePath" });
+  const { success, data, error } = processStorySchema.safeParse(req.body);
+  if (!success) {
+    return res.status(400).json({ error: "Invalid input parameters." });
   }
+
+  const { storagePath, title } = data;
 
   // Set up SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
@@ -105,7 +114,8 @@ export const processStoryJob = async (req, res) => {
     res.end();
   } catch (error) {
     console.error("Processing error:", error);
-    sendEvent('error', { message: error.message });
+    // SECURITY: Masking original error message to avoid leaking internals (Category 5)
+    sendEvent('error', { message: "An error occurred during processing. Please try again." });
     res.end();
   }
 };
@@ -213,13 +223,60 @@ export const getUserDetail = async (req, res) => {
     res.json({ profile, progress: progress || [] });
   } catch (err) {
     console.error("getUserDetail Error:", err);
-    res.status(500).json({ error: "Failed to fetch user progress" });
+    res.status(500).json({ error: "Failed to fetch user details" });
   }
 };
 
+export const updateUserStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { is_active } = req.body;
+
+    if (typeof is_active !== 'boolean') {
+      return res.status(400).json({ error: "is_active must be a boolean" });
+    }
+
+    // Update public.users table
+    const { data: profile, error: dbError } = await supabaseAdmin
+      .from('users')
+      .update({ is_active })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (dbError) throw dbError;
+
+    // Optional: Also ban/unban the user in Supabase Auth to instantly kill sessions
+    if (is_active) {
+      await supabaseAdmin.auth.admin.updateUserById(userId, { ban_duration: 'none' });
+    } else {
+      await supabaseAdmin.auth.admin.updateUserById(userId, { ban_duration: '876000h' });
+    }
+
+    res.json(profile);
+  } catch (err) {
+    console.error("Update user status error:", err);
+    res.status(500).json({ error: "Failed to update user status" });
+  }
+};
+
+// Input validation schema for registration (Security Feature: Category 3 & 9)
+const registerUserSchema = z.object({
+  email: z.string().email().max(100),
+  password: z.string().min(6).max(128), // Category 3: Prevent Long Password DoS
+  displayName: z.string().max(50).optional(),
+  parentEmail: z.string().email().max(100).optional(),
+  age: z.string().or(z.number()).optional()
+});
+
 export const registerUser = async (req, res) => {
   try {
-    const { email, password, displayName, parentEmail, age } = req.body;
+    const { success, data, error: validationError } = registerUserSchema.safeParse(req.body);
+    if (!success) {
+      return res.status(400).json({ error: "Invalid registration data provided." });
+    }
+    
+    const { email, password, displayName, parentEmail, age } = data;
     
     // 1. Create user in auth via Admin API to bypass email verification and sign-up restrictions
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -271,5 +328,68 @@ export const getChatLogs = async (req, res) => {
     }
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch chat logs" });
+  }
+};
+
+// --- REVIEWS MANAGEMENT ---
+
+export const getAllReviews = async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('reviews')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Error fetching all reviews:", error);
+      return res.status(500).json({ error: "Failed to fetch reviews" });
+    }
+
+    res.json(data || []);
+  } catch (err) {
+    console.error("getAllReviews error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const approveReview = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('reviews')
+      .update({ is_approved: true })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error approving review:", error);
+      return res.status(500).json({ error: "Failed to approve review" });
+    }
+
+    res.json({ success: true, review: data });
+  } catch (err) {
+    console.error("approveReview error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const deleteReview = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { error } = await supabaseAdmin
+      .from('reviews')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error("Error deleting review:", error);
+      return res.status(500).json({ error: "Failed to delete review" });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("deleteReview error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 };

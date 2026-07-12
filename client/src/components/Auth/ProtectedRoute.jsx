@@ -25,7 +25,8 @@ function ProtectedRoute({ children }) {
   // Profile completion redirect logic:
   // If a user has registered but hasn't completed their profile, we force them to /complete-profile.
   // We check location.pathname to avoid an infinite redirect loop if they are already on that page.
-  if ((!profile || !profile.profileComplete) && location.pathname !== "/complete-profile") {
+  // Legacy support: If an old profile has a displayName but no profileComplete flag, we consider it complete.
+  if ((!profile || (!profile.profileComplete && !profile.displayName)) && location.pathname !== "/complete-profile") {
     return <Navigate to="/complete-profile" replace />;
   }
 
