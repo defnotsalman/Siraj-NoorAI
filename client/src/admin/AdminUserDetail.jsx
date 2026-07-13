@@ -110,7 +110,7 @@ const AdminUserDetail = () => {
           <div className="p-3 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-xl border border-sky-200 dark:border-sky-500/20"><Book size={24} /></div>
           <div>
             <p className="text-sm font-bold text-[var(--admin-text-secondary)] uppercase tracking-wider mb-0.5">Stories Read</p>
-            <p className="text-2xl font-extrabold text-[var(--admin-text-primary)]">{user.storiesRead || 0}</p>
+            <p className="text-2xl font-extrabold text-[var(--admin-text-primary)]">{Math.max(user.storiesRead || 0, progress?.length || 0)}</p>
           </div>
         </div>
         <div className="bg-[var(--admin-surface)] p-6 rounded-3xl border border-[var(--admin-border)] shadow-sm flex items-center gap-4 transition-colors duration-300">

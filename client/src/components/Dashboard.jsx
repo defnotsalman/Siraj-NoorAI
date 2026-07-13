@@ -1,9 +1,24 @@
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Flame, Star, BookOpen } from 'lucide-react';
+import { syncLocalProgress } from '../services/progress';
+import { updateUserProfile } from '../services/profile';
 
 function Dashboard() {
-  const { profile } = useContext(AuthContext);
+  const { user, profile, refreshProfile } = useContext(AuthContext);
+
+  useEffect(() => {
+    if (user && profile) {
+      const runSync = async () => {
+        const updateFn = async (uid, data) => {
+          await updateUserProfile(uid, data);
+          if (refreshProfile) refreshProfile();
+        };
+        await syncLocalProgress(user.id, profile.storiesRead || 0, updateFn);
+      };
+      runSync();
+    }
+  }, [user, profile?.storiesRead]);
 
   const displayStoriesRead = profile?.storiesRead || 0;
   
