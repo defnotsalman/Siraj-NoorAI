@@ -21,7 +21,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.5.2",
     "fs-extra": "^11.3.6",
-    "google-tts-api": "^2.0.2",
+    "google-tts-api": "^0.0.6",
     "mammoth": "^1.12.0",
     "multer": "^2.2.0",
     "openai": "^5.0.0",
