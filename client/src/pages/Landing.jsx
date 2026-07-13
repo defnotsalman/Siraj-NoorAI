@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Sparkles, Bot, Trophy, ArrowRight, ShieldCheck, Heart, Star, MessageSquare, HelpCircle, ChevronDown, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useMotionValue, useTransform, animate, useInView } from 'framer-motion';
+import { 
+  BookOpen, Sparkles, Bot, Trophy, ArrowRight, ShieldCheck, Heart, Star, 
+  MessageSquare, HelpCircle, ChevronDown, X, Users, Shield, PlayCircle, 
+  Compass, BookMarked, Mail, CheckCircle2, Hash, Camera, MessageCircle 
+} from 'lucide-react';
 
 const fadeUpVariant = {
   hidden: { opacity: 0, y: 30 },
@@ -12,6 +16,66 @@ const staggerContainer = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
 };
+
+// Helper: Animated Counter
+function AnimatedCounter({ from, to, duration = 1.5, suffix = "" }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, amount: 0.5 });
+  const count = useMotionValue(from);
+  
+  const rounded = useTransform(count, (latest) => {
+    if (to % 1 !== 0) return latest.toFixed(1) + suffix; // e.g., 4.9
+    return Math.round(latest).toLocaleString() + suffix; // e.g., 10,000+
+  });
+
+  useEffect(() => {
+    if (isInView) {
+      const controls = animate(count, to, { duration, ease: "easeOut" });
+      return controls.stop;
+    }
+  }, [isInView, count, to, duration]);
+
+  return <motion.span ref={ref}>{rounded}</motion.span>;
+}
+
+// Helper: 3D Tilt Card
+function TiltCard({ children, className }) {
+  const ref = useRef(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const rotateX = useTransform(y, [-300, 300], [10, -10]);
+  const rotateY = useTransform(x, [-300, 300], [-10, 10]);
+
+  function handleMouse(event) {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    x.set(event.clientX - centerX);
+    y.set(event.clientY - centerY);
+  }
+
+  function handleMouseLeave() {
+    x.set(0);
+    y.set(0);
+  }
+
+  return (
+    <div style={{ perspective: 1500 }} className={className}>
+      <motion.div
+        ref={ref}
+        onMouseMove={handleMouse}
+        onMouseLeave={handleMouseLeave}
+        style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        className="w-full h-full"
+      >
+        {children}
+      </motion.div>
+    </div>
+  );
+}
 
 const mockReviewsPool = [
   { id: 1, name: "Fatima A.", role: "Mother of 2", text: "My son used to spend hours on random YouTube videos. Now he asks to log into NoorKids every single day. The AI companion is incredibly smart and safe!", rating: 5, initial: "F" },
@@ -27,15 +91,16 @@ const mockReviewsPool = [
 ];
 
 export default function Landing() {
-  // --- Reviews State & Logic ---
   const [reviewIndex, setReviewIndex] = useState(0);
   const [isHoveringReviews, setIsHoveringReviews] = useState(false);
   const [isAllReviewsModalOpen, setIsAllReviewsModalOpen] = useState(false);
+  const [previewLang, setPreviewLang] = useState('en');
 
-  // --- Global Click Effect ---
   const [clickEffects, setClickEffects] = useState([]);
   useEffect(() => {
     const handleClick = (e) => {
+      // Don't spawn ripples on links or buttons to avoid visual clutter
+      if (e.target.closest('a') || e.target.closest('button')) return;
       const newClick = { id: Date.now() + Math.random(), x: e.clientX, y: e.clientY };
       setClickEffects(prev => [...prev, newClick]);
       setTimeout(() => {
@@ -50,7 +115,7 @@ export default function Landing() {
     if (isHoveringReviews || isAllReviewsModalOpen) return;
     const interval = setInterval(() => {
       setReviewIndex((prev) => (prev + 3) % mockReviewsPool.length);
-    }, 3000); // Rotate every 3s
+    }, 3000); 
     return () => clearInterval(interval);
   }, [isHoveringReviews, isAllReviewsModalOpen]);
 
@@ -60,7 +125,6 @@ export default function Landing() {
     mockReviewsPool[(reviewIndex + 2) % mockReviewsPool.length],
   ];
 
-  // --- Modal & Form State ---
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [reviewForm, setReviewForm] = useState({ name: '', email: '', rating: 5, text: '' });
   const [reviewSubmitStatus, setReviewSubmitStatus] = useState(null);
@@ -89,7 +153,6 @@ export default function Landing() {
     }
   };
 
-  // --- Smooth Scroll Logic ---
   const handleScrollTo = (e, id) => {
     e.preventDefault();
     const element = document.getElementById(id);
@@ -98,7 +161,6 @@ export default function Landing() {
     }
   };
 
-  // --- FAQ State ---
   const [openFaq, setOpenFaq] = useState(null);
   const toggleFaq = (idx) => setOpenFaq(openFaq === idx ? null : idx);
 
@@ -168,7 +230,7 @@ export default function Landing() {
             <a href="#features" onClick={(e) => handleScrollTo(e, 'features')} className="hover:text-amber-400 transition-colors">Features</a>
             <a href="#how-it-works" onClick={(e) => handleScrollTo(e, 'how-it-works')} className="hover:text-amber-400 transition-colors">How it Works</a>
             <a href="#mission" onClick={(e) => handleScrollTo(e, 'mission')} className="hover:text-amber-400 transition-colors">Our Mission</a>
-            <a href="mailto:support@noorkids.com" className="hover:text-amber-400 transition-colors">Contact Us</a>
+            <a href="#contact" onClick={(e) => handleScrollTo(e, 'contact')} className="hover:text-amber-400 transition-colors">Contact Us</a>
           </div>
           <div className="flex items-center gap-3 sm:gap-4">
             <Link to="/login" className="text-slate-300 hover:text-white font-medium transition-colors text-sm sm:text-base px-2">Log In</Link>
@@ -188,7 +250,7 @@ export default function Landing() {
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 sm:pb-32 overflow-x-hidden pt-28">
         
         {/* HERO SECTION */}
-        <div className="pb-16 sm:pb-24 md:pb-36 flex flex-col items-center text-center">
+        <div className="pb-16 sm:pb-24 md:pb-32 flex flex-col items-center text-center">
           <motion.div 
             animate={{ y: [-4, 4, -4] }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
@@ -233,17 +295,32 @@ export default function Landing() {
               </motion.button>
             </Link>
           </motion.div>
-          
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 1 }}
-            className="mt-8 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm font-bold text-slate-500"
-          >
-            <div className="flex items-center gap-1.5 sm:gap-2"><ShieldCheck size={16} className="text-emerald-400 sm:w-[18px] sm:h-[18px]" /> 100% Kid Safe</div>
-            <div className="flex items-center gap-1.5 sm:gap-2"><Heart size={16} className="text-rose-400 sm:w-[18px] sm:h-[18px]" /> Loved by Parents</div>
-          </motion.div>
         </div>
+
+        {/* 1. STATS BAR SECTION */}
+        <motion.div 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={staggerContainer}
+          className="mb-20 sm:mb-32 w-full bg-[#050810] border-y border-white/5 shadow-2xl"
+        >
+          <div className="max-w-7xl mx-auto py-8 px-4 flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-white/10">
+            {[
+              { label: "Happy Kids", num: 10000, suffix: "+" },
+              { label: "Stories & Quizzes", num: 500, suffix: "+" },
+              { label: "Islamic Topics", num: 50, suffix: "+" },
+              { label: "Parent Rating", num: 4.9, suffix: "/5" }
+            ].map((stat, idx) => (
+              <motion.div key={idx} variants={fadeUpVariant} className="flex-1 flex flex-col items-center justify-center text-center py-6 md:py-2 px-4">
+                <div className="text-4xl md:text-5xl font-black text-white mb-3 tracking-tight">
+                  <AnimatedCounter from={0} to={stat.num} suffix={stat.suffix} />
+                </div>
+                <div className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-[0.2em]">{stat.label}</div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
 
         {/* FEATURES GRID */}
         <motion.div 
@@ -252,7 +329,7 @@ export default function Landing() {
           whileInView="visible"
           viewport={{ once: true, amount: 0.2 }}
           variants={staggerContainer}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 mb-20 sm:mb-32 relative"
+          className="scroll-mt-32 grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 mb-20 sm:mb-32 relative"
         >
           {/* Card 1 */}
           <motion.div 
@@ -309,6 +386,66 @@ export default function Landing() {
           </motion.div>
         </motion.div>
 
+        {/* 2. MEET YOUR AI GUIDE SECTION */}
+        <motion.div 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={staggerContainer}
+          className="mb-20 sm:mb-32 max-w-5xl mx-auto"
+        >
+          <div className="glass-panel rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-8 md:py-10 md:px-12 border border-white/10 bg-gradient-to-br from-white/[0.02] to-transparent relative overflow-hidden flex flex-col md:flex-row items-center gap-8 md:gap-12">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+            
+            {/* AI Avatar Column */}
+            <motion.div variants={fadeUpVariant} className="flex-1 relative flex justify-center items-center w-full min-h-[250px]">
+              <div className="relative w-48 h-48 sm:w-56 sm:h-56">
+                <motion.div 
+                  animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.6, 0.3] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute inset-0 bg-fuchsia-500/30 rounded-full blur-2xl"
+                />
+                <motion.div 
+                  animate={{ y: [-10, 10, -10] }}
+                  transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute inset-0 bg-gradient-to-br from-[#1e1b4b] to-[#4c1d95] rounded-full border-4 border-fuchsia-500/30 shadow-[0_0_40px_rgba(217,70,239,0.3)] flex items-center justify-center overflow-hidden"
+                >
+                  <Bot size={80} className="text-fuchsia-300 drop-shadow-[0_0_15px_rgba(217,70,239,0.5)]" />
+                </motion.div>
+              </div>
+            </motion.div>
+            
+            {/* Content Column */}
+            <div className="flex-1 relative z-10 text-center md:text-left">
+              <motion.div variants={fadeUpVariant} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/30 text-fuchsia-400 font-bold text-xs mb-4">
+                <Bot size={14} /> Powered by Safe AI
+              </motion.div>
+              <motion.h2 variants={fadeUpVariant} className="text-3xl sm:text-4xl font-black text-white mb-4 leading-tight">
+                Meet Noor, Your Child's Learning Companion
+              </motion.h2>
+              <motion.p variants={fadeUpVariant} className="text-sm sm:text-base text-slate-300 leading-relaxed mb-4">
+                Noor is a specially trained AI designed exclusively for NoorKids. It answers questions directly related to the stories your child is reading, gently explaining Islamic concepts in a way young minds can grasp.
+              </motion.p>
+              <motion.p variants={fadeUpVariant} className="text-sm sm:text-base text-slate-300 leading-relaxed mb-6">
+                Strict guardrails ensure Noor never leaves the safe topic boundary, providing a secure, uplifting, and highly educational conversational experience.
+              </motion.p>
+              
+              <motion.div variants={staggerContainer} className="flex flex-wrap justify-center md:justify-start gap-3">
+                {[
+                  { icon: ShieldCheck, text: "Kid-Safe Responses", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+                  { icon: Sparkles, text: "Encourages Curiosity", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+                  { icon: Bot, text: "Available 24/7", color: "text-indigo-400", bg: "bg-indigo-500/10", border: "border-indigo-500/20" }
+                ].map((chip, idx) => (
+                  <motion.div key={idx} variants={fadeUpVariant} className={`flex items-center gap-2 px-4 py-2 rounded-xl border ${chip.bg} ${chip.border}`}>
+                    <chip.icon size={16} className={chip.color} />
+                    <span className="text-sm font-bold text-slate-200">{chip.text}</span>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+          </div>
+        </motion.div>
+
         {/* HOW IT WORKS SECTION */}
         <motion.div 
           id="how-it-works" 
@@ -316,7 +453,7 @@ export default function Landing() {
           whileInView="visible"
           viewport={{ once: true, amount: 0.2 }}
           variants={staggerContainer}
-          className="mb-20 sm:mb-32 relative text-center pt-20 -mt-20"
+          className="scroll-mt-32 mb-20 sm:mb-32 relative text-center pt-10"
         >
           <motion.div variants={fadeUpVariant} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold text-xs sm:text-sm mb-4 sm:mb-6">
             Simple & Effective
@@ -326,7 +463,6 @@ export default function Landing() {
           </motion.h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 sm:gap-8 relative max-w-4xl mx-auto px-4 sm:px-0">
-            {/* Connecting line for desktop */}
             <motion.div 
               initial={{ scaleX: 0 }}
               whileInView={{ scaleX: 1 }}
@@ -351,6 +487,99 @@ export default function Landing() {
           </div>
         </motion.div>
 
+        {/* 3. SAMPLE STORY PREVIEW SECTION */}
+        <motion.div 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={staggerContainer}
+          className="mb-20 sm:mb-32 flex flex-col items-center text-center"
+        >
+          <motion.h2 variants={fadeUpVariant} className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4">
+            See It In Action
+          </motion.h2>
+          <motion.p variants={fadeUpVariant} className="text-slate-400 text-lg mb-12 max-w-xl mx-auto">
+            Try a quick snippet of our interactive stories before you sign up.
+          </motion.p>
+          
+          <motion.div variants={fadeUpVariant} className="w-full max-w-3xl mx-auto cursor-crosshair">
+            <TiltCard className="rounded-[2.5rem] p-[2px] bg-gradient-to-b from-white/10 to-transparent shadow-2xl">
+              <div className="bg-[#0b0f19] rounded-[2.5rem] overflow-hidden border border-white/5 shadow-[inset_0_0_40px_rgba(0,0,0,0.5)]">
+                {/* Mockup Header */}
+                <div className="bg-[#121827] px-6 py-4 border-b border-white/5 flex items-center justify-between">
+                  <div className="text-slate-400 text-xs sm:text-sm font-bold bg-white/5 px-4 py-2 rounded-full flex items-center gap-2">
+                    <BookOpen size={16} /> 
+                    {previewLang === 'en' ? 'Interactive Story' : 'انٹرایکٹو کہانی'}
+                  </div>
+                  <div className="flex bg-black/40 rounded-full p-1 border border-white/10" dir="ltr">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setPreviewLang('en'); }} 
+                      className={`px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all ${previewLang === 'en' ? 'bg-amber-500 text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      ENG
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setPreviewLang('ur'); }} 
+                      className={`px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all ${previewLang === 'ur' ? 'bg-amber-500 text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      اردو
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Mockup Body */}
+                <div className="p-6 sm:p-10" dir={previewLang === 'ur' ? 'rtl' : 'ltr'}>
+                  <h3 className={`font-bold text-white mb-4 ${previewLang === 'ur' ? 'text-3xl' : 'text-2xl'}`}>
+                    {previewLang === 'en' ? 'The Great Ark' : 'عظیم کشتی'}
+                  </h3>
+                  <p className={`text-slate-300 leading-relaxed mb-8 ${previewLang === 'ur' ? 'text-xl' : 'text-lg'}`}>
+                    {previewLang === 'en' ? 
+                      "Prophet Nuh (AS) patiently called his people to worship Allah for 950 years. When they refused to listen, Allah commanded him to build a massive Ark. Even though there was no water nearby, he followed Allah's command perfectly." 
+                      : 
+                      "حضرت نوح (علیہ السلام) نے 950 سال تک صبر کے ساتھ اپنی قوم کو اللہ کی عبادت کی طرف بلایا۔ جب انہوں نے ماننے سے انکار کر دیا، تو اللہ نے آپ کو ایک بہت بڑی کشتی بنانے کا حکم دیا۔ اگرچہ قریب کوئی پانی نہیں تھا، لیکن آپ نے اللہ کے حکم کی پوری طرح تعمیل کی۔"
+                    }
+                  </p>
+                  
+                  {/* Mini Quiz Area */}
+                  <div className="bg-white/[0.03] border border-white/10 rounded-[1.5rem] p-6 sm:p-8">
+                    <div className="flex items-center gap-2 text-amber-400 font-bold text-sm mb-4">
+                      <HelpCircle size={18} /> 
+                      {previewLang === 'en' ? 'Knowledge Check' : 'معلومات کی جانچ'}
+                    </div>
+                    <p className={`text-white font-semibold mb-6 ${previewLang === 'ur' ? 'text-lg' : 'text-base'}`}>
+                      {previewLang === 'en' ? 'How long did Prophet Nuh (AS) preach to his people?' : 'حضرت نوح (علیہ السلام) نے اپنی قوم کو کتنے عرصے تک تبلیغ کی؟'}
+                    </p>
+                    <div className="flex flex-col gap-3">
+                      {(previewLang === 'en' ? ["50 years", "500 years", "950 years"] : ["50 سال", "500 سال", "950 سال"]).map((ans, i) => (
+                        <motion.button 
+                          key={i}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          className={`w-full px-5 py-4 rounded-xl bg-white/[0.05] text-slate-300 hover:bg-amber-500 hover:text-black font-semibold transition-colors border border-white/5 hover:border-transparent shadow-sm ${previewLang === 'ur' ? 'text-right text-lg' : 'text-left'}`}
+                        >
+                          {ans}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TiltCard>
+          </motion.div>
+
+          <motion.div variants={fadeUpVariant} className="mt-12">
+            <Link to="/register">
+              <motion.button 
+                whileHover={{ scale: 1.05, boxShadow: "0 0 25px rgba(245,158,11,0.4)" }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 px-8 py-3 sm:px-10 sm:py-4 rounded-full font-bold shadow-[0_0_15px_rgba(245,158,11,0.2)] text-base sm:text-lg"
+              >
+                Read Full Story
+              </motion.button>
+            </Link>
+          </motion.div>
+        </motion.div>
+
         {/* ABOUT US SECTION */}
         <motion.div 
           id="mission" 
@@ -358,7 +587,7 @@ export default function Landing() {
           whileInView="visible"
           viewport={{ once: true, amount: 0.2 }}
           variants={staggerContainer}
-          className="mb-10 sm:mb-16 pt-20 -mt-20"
+          className="scroll-mt-32 mb-20 sm:mb-32"
         >
           <div className="glass-panel rounded-3xl sm:rounded-[3rem] p-6 sm:p-10 md:p-16 relative overflow-hidden flex flex-col-reverse lg:flex-row items-center gap-10 lg:gap-12">
             <div className="absolute -left-20 -top-20 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px]"></div>
@@ -391,8 +620,106 @@ export default function Landing() {
           </div>
         </motion.div>
 
+        {/* 4. CURRICULUM / TOPICS COVERED SECTION */}
+        <motion.div 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={staggerContainer}
+          className="mb-20 sm:mb-32 relative pt-10"
+        >
+          <div className="text-center mb-12 sm:mb-16">
+            <motion.h2 variants={fadeUpVariant} className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4">
+              What They'll Learn
+            </motion.h2>
+            <motion.p variants={fadeUpVariant} className="text-slate-400 text-lg max-w-2xl mx-auto">
+              A growing library covering every part of Islamic knowledge for kids.
+            </motion.p>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { icon: BookOpen, title: "Stories of the Prophets", desc: "Inspiring tales of resilience and faith.", color: "text-indigo-400", bg: "bg-indigo-500/10", border: "border-indigo-500/20" },
+              { icon: Users, title: "Sahaba & Companions", desc: "Heroes of Islam who stood by the Prophet (PBUH).", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+              { icon: Heart, title: "Islamic Morals", desc: "Kindness, honesty, and manners in daily life.", color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+              { icon: BookMarked, title: "Quran Stories", desc: "Miracles and lessons from the Holy Book.", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+              { icon: Compass, title: "Duas for Daily Life", desc: "Simple prayers for eating, sleeping, and traveling.", color: "text-sky-400", bg: "bg-sky-500/10", border: "border-sky-500/20" },
+              { icon: Shield, title: "Islamic History", desc: "Key events that shaped the Muslim world.", color: "text-fuchsia-400", bg: "bg-fuchsia-500/10", border: "border-fuchsia-500/20" }
+            ].map((topic, idx) => (
+              <motion.div 
+                key={idx}
+                variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut", delay: idx * 0.08 } } }}
+                whileHover={{ y: -6, boxShadow: "0 0 20px rgba(255,255,255,0.05)", borderColor: "rgba(255,255,255,0.15)" }}
+                className="glass-panel p-6 rounded-2xl border border-white/5 bg-white/[0.02] flex items-start gap-4 group transition-colors"
+              >
+                <div className={`p-3 rounded-xl ${topic.bg} ${topic.border} border shrink-0`}>
+                  <topic.icon size={24} className={topic.color} />
+                </div>
+                <div>
+                  <h4 className="text-white font-bold text-lg mb-1">{topic.title}</h4>
+                  <p className="text-slate-400 text-sm leading-relaxed">{topic.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* 5. SAFETY & PARENTAL CONTROLS SECTION */}
+        <motion.div 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={staggerContainer}
+          className="mb-20 sm:mb-32 max-w-6xl mx-auto px-4"
+        >
+          <div className="bg-white/[0.02] rounded-[3rem] p-6 sm:p-10 md:p-12 border border-white/5 flex flex-col md:flex-row items-center gap-10 sm:gap-12 relative overflow-hidden">
+            {/* Soft background glow */}
+            <div className="absolute top-0 right-0 w-80 h-80 bg-sky-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+            <div className="flex-1 relative z-10">
+              <motion.div variants={fadeUpVariant} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 font-bold text-xs sm:text-sm mb-5">
+                <ShieldCheck size={16} /> 100% Secure Environment
+              </motion.div>
+              <motion.h2 variants={fadeUpVariant} className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-6 leading-tight">
+                Built for Peace of Mind
+              </motion.h2>
+              <div className="space-y-3">
+                {[
+                  "No ads, ever. Pure uninterrupted learning.",
+                  "No external links or distracting videos.",
+                  "AI responses strictly limited to Islamic topics.",
+                  "Parent dashboard to track progress and quizzes."
+                ].map((point, idx) => (
+                  <motion.div key={idx} variants={fadeUpVariant} className="flex items-center gap-4 bg-black/20 py-3 px-4 rounded-2xl border border-white/5 transition-all hover:bg-white/[0.02]">
+                    <div className="bg-sky-500/20 p-2 rounded-full shrink-0">
+                      <CheckCircle2 size={20} className="text-sky-400" />
+                    </div>
+                    <span className="text-slate-300 font-semibold text-sm sm:text-base">{point}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            <motion.div variants={fadeUpVariant} className="flex-1 flex justify-center w-full relative z-10">
+              <div className="relative w-56 h-56 sm:w-72 sm:h-72 group cursor-default">
+                <motion.div 
+                  animate={{ scale: [1, 1.05, 1], opacity: [0.5, 0.8, 0.5] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute inset-0 bg-sky-500/20 rounded-[3rem] rotate-12 blur-2xl transition-transform duration-500 group-hover:rotate-6"
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-[#082f49] to-[#020617] rounded-[3rem] border border-sky-500/30 shadow-[0_0_50px_rgba(14,165,233,0.15)] flex flex-col items-center justify-center p-6 sm:p-8 text-center rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                  <Shield size={56} className="text-sky-400 mb-4 sm:mb-6 drop-shadow-[0_0_15px_rgba(14,165,233,0.4)]" />
+                  <h3 className="text-white font-black text-xl sm:text-2xl mb-2">Safe Zone</h3>
+                  <p className="text-slate-400 text-xs sm:text-sm font-medium">Your child's digital well-being is our top priority.</p>
+                </div>
+              </div>
+            </motion.div>
+            
+          </div>
+        </motion.div>
+
         {/* TESTIMONIALS SECTION */}
-        <div id="reviews" className="mb-10 sm:mb-16 relative pt-20 -mt-20">
+        <div id="reviews" className="scroll-mt-32 mb-10 sm:mb-16 relative pt-10">
           <div className="flex flex-col sm:flex-row items-center justify-between mb-10 sm:mb-16 gap-6">
             <div className="text-center sm:text-left w-full">
               <div className="flex items-center justify-center sm:justify-between w-full flex-wrap gap-4 mb-4 sm:mb-6">
@@ -474,7 +801,7 @@ export default function Landing() {
           whileInView="visible"
           viewport={{ once: true, amount: 0.2 }}
           variants={staggerContainer}
-          className="mb-10 sm:mb-16 relative pt-20 -mt-20 max-w-4xl mx-auto"
+          className="scroll-mt-32 mb-10 sm:mb-16 relative pt-10 max-w-4xl mx-auto"
         >
           <div className="text-center mb-10 sm:mb-16">
             <motion.div variants={fadeUpVariant} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-500/10 border border-slate-500/30 text-slate-300 font-bold text-xs sm:text-sm mb-4 sm:mb-6">
@@ -555,18 +882,76 @@ export default function Landing() {
 
       </main>
 
-      {/* FOOTER */}
-      <footer className="relative z-10 border-t border-white/5 bg-[#030305] pt-12 pb-8">
-        <div className="max-w-4xl mx-auto px-6 flex flex-col items-center justify-center text-center">
-          <div className="flex flex-col items-center gap-3 mb-6">
-            <img src="/logo.jpg" alt="NoorKids" className="w-12 h-12 rounded-xl shadow-[0_0_15px_rgba(255,255,255,0.05)] border border-white/10" />
-            <span className="text-2xl font-black text-white tracking-tight">NoorKids</span>
+      {/* 6. REDESIGNED FOOTER */}
+      <motion.footer 
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1 }}
+        id="contact"
+        className="scroll-mt-32 relative z-10 bg-[#020204] pt-16 pb-8 border-t border-white/5"
+      >
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/30 to-transparent"></div>
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8 mb-12">
+            
+            {/* Brand */}
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                <img src="/logo.jpg" alt="NoorKids" className="w-10 h-10 rounded-xl shadow-[0_0_15px_rgba(255,255,255,0.05)] border border-white/10" />
+                <span className="text-2xl font-black text-white tracking-tight">NoorKids</span>
+              </div>
+              <p className="text-slate-400 text-sm leading-relaxed max-w-xs">
+                A safe, engaging, and premium digital environment where modern technology meets timeless Islamic values.
+              </p>
+              <div className="flex gap-4 mt-2">
+                <a href="#" className="text-slate-500 hover:text-amber-400 transition-colors"><Hash size={20} /></a>
+                <a href="#" className="text-slate-500 hover:text-amber-400 transition-colors"><Camera size={20} /></a>
+                <a href="#" className="text-slate-500 hover:text-amber-400 transition-colors"><MessageCircle size={20} /></a>
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div className="flex flex-col gap-4 md:items-center">
+              <div>
+                <h4 className="text-white font-bold mb-4">Quick Links</h4>
+                <ul className="space-y-3 text-sm text-slate-400">
+                  <li><a href="#features" onClick={(e) => handleScrollTo(e, 'features')} className="hover:text-amber-400 transition-colors">Features</a></li>
+                  <li><a href="#how-it-works" onClick={(e) => handleScrollTo(e, 'how-it-works')} className="hover:text-amber-400 transition-colors">How it Works</a></li>
+                  <li><a href="#mission" onClick={(e) => handleScrollTo(e, 'mission')} className="hover:text-amber-400 transition-colors">Our Mission</a></li>
+                  <li><a href="#faq" onClick={(e) => handleScrollTo(e, 'faq')} className="hover:text-amber-400 transition-colors">FAQs</a></li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Contact / Newsletter */}
+            <div className="flex flex-col gap-4">
+              <h4 className="text-white font-bold mb-1">Get in Touch</h4>
+              <a href="mailto:support@noorkids.com" className="flex items-center gap-2 text-slate-400 hover:text-amber-400 transition-colors text-sm mb-4">
+                <Mail size={16} /> support@noorkids.com
+              </a>
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Join our newsletter</span>
+                <div className="flex gap-2">
+                  <input type="email" placeholder="Email address" className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-amber-500 w-full" />
+                  <button className="bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-4 py-2 rounded-lg text-sm transition-colors">
+                    Subscribe
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
-          <p className="text-slate-500 text-sm font-medium">
-            © {new Date().getFullYear()} NoorKids App. Built with ❤️ for our Ummah.
-          </p>
+
+          <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-medium text-slate-500">
+            <p>© {new Date().getFullYear()} NoorKids AI. All rights reserved.</p>
+            <div className="flex gap-6">
+              <a href="#" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
+              <a href="#" className="hover:text-slate-300 transition-colors">Terms of Service</a>
+            </div>
+          </div>
         </div>
-      </footer>
+      </motion.footer>
 
       {/* REVIEW MODAL */}
       <AnimatePresence>
