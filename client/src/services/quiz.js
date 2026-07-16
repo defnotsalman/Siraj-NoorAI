@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 const API_URL = 'http://localhost:5000/api/quiz';
 
 /**
@@ -8,8 +6,11 @@ const API_URL = 'http://localhost:5000/api/quiz';
  * @returns {Promise<Object>} The quiz data containing questions and options (without answers)
  */
 export const getQuiz = async (storyId, lang = 'ur') => {
-  const response = await axios.get(`${API_URL}/${storyId}?lang=${lang}`);
-  return response.data;
+  const response = await fetch(`${API_URL}/${storyId}?lang=${lang}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch quiz');
+  }
+  return response.json();
 };
 
 /**
@@ -20,6 +21,16 @@ export const getQuiz = async (storyId, lang = 'ur') => {
  * @returns {Promise<Object>} The grading results, including the score and explanations
  */
 export const submitQuiz = async (storyId, answers, lang = 'ur') => {
-  const response = await axios.post(`${API_URL}/${storyId}/submit?lang=${lang}`, { answers });
-  return response.data;
+  const response = await fetch(`${API_URL}/${storyId}/submit?lang=${lang}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ answers }),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to submit quiz');
+  }
+  return response.json();
 };
+

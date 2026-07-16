@@ -25,22 +25,21 @@ async function fetchWithRetry(url, retries = 3) {
   }
 }
 
+// ── Para 30 (Juz' Amma): Surah 1 (Al-Fatiha) + Surahs 78–114 ──
+const PARA_30_SURAHS = [1, ...Array.from({ length: 37 }, (_, i) => 78 + i)];
+
 async function main() {
   await fs.ensureDir(OUTPUT_DIR);
 
-  console.log("Fetching surah list from Al Quran Cloud...");
-  const metaRes = await fetchWithRetry('https://api.alquran.cloud/v1/surah');
-  if (metaRes.code !== 200) {
-    throw new Error("Failed to fetch surah list");
-  }
+  console.log("Building Quran data for Para 30 (Juz' Amma)...");
+  console.log(`Surahs to fetch: ${PARA_30_SURAHS.join(', ')}`);
 
   const manifest = [];
-  const totalSurahs = 114;
   
   // We want Tajweed, English (Asad), Urdu (Jalandhry), and Audio (Alafasy)
   const editions = 'quran-tajweed,en.asad,ur.jalandhry,ar.alafasy';
 
-  for (let i = 1; i <= totalSurahs; i++) {
+  for (const i of PARA_30_SURAHS) {
     const filename = path.join(OUTPUT_DIR, `${i}.json`);
     
     // Simple idempotency check
@@ -59,7 +58,7 @@ async function main() {
       continue;
     }
 
-    console.log(`Fetching Surah ${i}/${totalSurahs}...`);
+    console.log(`Fetching Surah ${i} (${PARA_30_SURAHS.indexOf(i) + 1}/${PARA_30_SURAHS.length})...`);
     const url = `https://api.alquran.cloud/v1/surah/${i}/editions/${editions}`;
     const data = await fetchWithRetry(url);
 
@@ -118,7 +117,7 @@ async function main() {
   await fs.writeJson(MANIFEST_FILE, manifest, { spaces: 2 });
   
   console.log(`\n=== Build Summary ===`);
-  console.log(`Successfully processed ${manifest.length} surahs.`);
+  console.log(`Successfully processed ${manifest.length} surahs (Para 30).`);
   console.log(`Manifest saved to ${MANIFEST_FILE}`);
 }
 

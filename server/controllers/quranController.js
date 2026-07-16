@@ -1,15 +1,19 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import OpenAI from 'openai';
 import { createReadStream } from 'fs';
 import axios from 'axios';
 import FormData from 'form-data';
+import https from 'https';
+import http from 'http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const QURAN_DIR = path.join(__dirname, '..', 'output', 'quran');
 const MANIFEST_FILE = path.join(QURAN_DIR, 'manifest.json');
+
+// ── Para 30 (Juz' Amma) scope: Surah 1 (Al-Fatiha) + Surahs 78–114 ──
+const ALLOWED_SURAHS = new Set([1, ...Array.from({ length: 37 }, (_, i) => 78 + i)]);
 
 // In-memory cache
 let manifestCache = null;
@@ -19,9 +23,11 @@ export const getManifest = async (req, res) => {
   try {
     if (!manifestCache) {
       if (await fs.pathExists(MANIFEST_FILE)) {
-        manifestCache = await fs.readJson(MANIFEST_FILE);
+        const full = await fs.readJson(MANIFEST_FILE);
+        // Filter to only Para 30 surahs
+        manifestCache = full.filter(s => ALLOWED_SURAHS.has(s.number));
       } else {
-        return res.status(404).json({ error: "Quran data not built yet." });
+        return res.status(404).json({ error: "Quran data not built yet. Run: node scripts/buildQuranData.js" });
       }
     }
     res.json(manifestCache);
@@ -38,6 +44,11 @@ export const getSurah = async (req, res) => {
       return res.status(400).json({ error: "Invalid surah number" });
     }
 
+    // Block surahs outside Para 30 scope
+    if (!ALLOWED_SURAHS.has(num)) {
+      return res.status(403).json({ error: "This app currently only supports Juz' Amma (Para 30): Surahs 78–114 and Al-Fatiha." });
+    }
+
     if (surahCache.has(num)) {
       return res.json(surahCache.get(num));
     }
@@ -48,16 +59,13 @@ export const getSurah = async (req, res) => {
       surahCache.set(num, data);
       return res.json(data);
     } else {
-      return res.status(404).json({ error: "Surah not found" });
+      return res.status(404).json({ error: "Surah not found. Run: node scripts/buildQuranData.js" });
     }
   } catch (err) {
     console.error(`Error serving surah ${req.params.number}:`, err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
-import https from 'https';
-import http from 'http';
 
 export const proxyAudio = (req, res) => {
   const { url } = req.query;
@@ -84,11 +92,11 @@ export const proxyAudio = (req, res) => {
   });
 };
 
-// Normalization function
+// ── Arabic text normalization ──
 function normalizeArabic(text) {
   if (!text) return "";
   
-  // Remove tajweed tags if any (from the original text)
+  // Remove HTML tags
   let cleanText = text.replace(/<[^>]*>/g, '');
   
   // Remove custom Tajweed bracket syntax (e.g. [h:1[ٱ] or [l[ل] or ])
@@ -104,16 +112,16 @@ function normalizeArabic(text) {
   cleanText = cleanText.replace(/[\u064B-\u065F\u06D6-\u06ED]/g, '');
   
   // Normalize visually similar characters
-  cleanText = cleanText.replace(/[\u0622\u0623\u0625\u0671\u0672\u0673]/g, '\u0627'); // Alif variants to Alif
-  cleanText = cleanText.replace(/\u0629/g, '\u0647'); // Ta Marbuta to Ha
-  cleanText = cleanText.replace(/\u064A/g, '\u0649'); // Ya to Alif Maqsura (or vice versa, just consistency)
-  cleanText = cleanText.replace(/\u0624/g, '\u0648'); // Waw with Hamza to Waw
-  cleanText = cleanText.replace(/\u0626/g, '\u064A'); // Ya with Hamza to Ya
+  cleanText = cleanText.replace(/[\u0622\u0623\u0625\u0671\u0672\u0673]/g, '\u0627'); // Alif variants
+  cleanText = cleanText.replace(/\u0629/g, '\u0647'); // Ta Marbuta -> Ha
+  cleanText = cleanText.replace(/\u064A/g, '\u0649'); // Ya -> Alif Maqsura
+  cleanText = cleanText.replace(/\u0624/g, '\u0648'); // Waw with Hamza -> Waw
+  cleanText = cleanText.replace(/\u0626/g, '\u064A'); // Ya with Hamza -> Ya
   
   // Remove Tatweel (Kashida)
   cleanText = cleanText.replace(/\u0640/g, '');
   
-  // Remove Arabic punctuation (comma, semicolon, question mark) and standard punctuation
+  // Remove Arabic punctuation and standard punctuation
   cleanText = cleanText.replace(/[\u060C\u061B\u061F\.,!\?]/g, '');
   
   // Remove all non-arabic word characters, just keep spaces
@@ -122,13 +130,43 @@ function normalizeArabic(text) {
   return cleanText.trim();
 }
 
-// Simple sequence alignment (diff) function word by word
+// ── Levenshtein distance for fuzzy word matching ──
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+// ── Word similarity (0..1) based on Levenshtein ──
+function wordSimilarity(a, b) {
+  if (a === b) return 1.0;
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen === 0) return 1.0;
+  return 1.0 - levenshtein(a, b) / maxLen;
+}
+
+// ── Improved word-by-word alignment with fuzzy matching ──
+const FUZZY_THRESHOLD = 0.65; // Words with ≥65% similarity count as a match
+
 function alignWords(expectedNorm, actualNorm, expectedOriginal) {
   const expWords = expectedNorm.split(/\s+/).filter(Boolean);
   const actWords = actualNorm.split(/\s+/).filter(Boolean);
   
-  // Strip the bracket syntax from expectedOriginal for UI display only (so it doesn't look garbled)
-  let cleanOriginal = expectedOriginal;
+  // Strip the bracket syntax from expectedOriginal for UI display
+  let cleanOriginal = expectedOriginal || '';
   cleanOriginal = cleanOriginal.replace(/\[[a-zA-Z]+(:\d+)?\[/g, '');
   cleanOriginal = cleanOriginal.replace(/\]/g, '');
   const origWords = cleanOriginal.split(/\s+/).filter(Boolean);
@@ -140,32 +178,44 @@ function alignWords(expectedNorm, actualNorm, expectedOriginal) {
   for (let i = 0; i < expWords.length; i++) {
     const e = expWords[i];
     let matched = false;
+    let bestSim = 0;
+    let bestJ = -1;
     
-    // Look ahead a bit to find a match (tolerate missing words)
-    for (let j = actIndex; j < Math.min(actWords.length, actIndex + 3); j++) {
-      if (e === actWords[j]) {
-        matched = true;
-        actIndex = j + 1; // Move pointer past the matched word
-        break;
+    // Look ahead up to 4 words to tolerate insertions/skips
+    const searchEnd = Math.min(actWords.length, actIndex + 4);
+    for (let j = actIndex; j < searchEnd; j++) {
+      const sim = wordSimilarity(e, actWords[j]);
+      if (sim > bestSim) {
+        bestSim = sim;
+        bestJ = j;
       }
     }
     
-    // Fallback if origWords doesn't line up perfectly due to spacing
+    if (bestSim >= FUZZY_THRESHOLD && bestJ >= 0) {
+      matched = true;
+      actIndex = bestJ + 1;
+    }
+    
     const displayWord = origWords[i] || e;
     
-    if (matched) {
-      result.push({ word: displayWord, matched: true, index: i });
-      correctCount++;
-    } else {
-      result.push({ word: displayWord, matched: false, index: i });
-    }
+    result.push({
+      word: displayWord,
+      matched,
+      similarity: Math.round(bestSim * 100),
+      index: i
+    });
+    
+    if (matched) correctCount++;
   }
   
   const score = expWords.length > 0 ? Math.round((correctCount / expWords.length) * 100) : 0;
   return { result, score };
 }
 
+// ── Main grading endpoint ──
 export const gradeRecitation = async (req, res) => {
+  let tempPathWithExt = null;
+  
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No audio file provided." });
@@ -176,27 +226,14 @@ export const gradeRecitation = async (req, res) => {
       return res.status(400).json({ error: "Target text is required." });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      // Mock response if no key is present to prevent breaking
-      return res.json({
-        score: 85,
-        transcript: "Mock transcript due to missing OpenAI key",
-        words: alignWords(normalizeArabic(targetText), normalizeArabic(targetText)).result
-      });
-    }
-
-    // OpenAI requires the file to have a valid audio extension
-    const tempPathWithExt = req.file.path + '.webm';
+    // Rename temp file to have a proper extension
+    tempPathWithExt = req.file.path + '.webm';
     await fs.rename(req.file.path, tempPathWithExt);
-    const audioStream = createReadStream(tempPathWithExt);
-
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
 
     const cleanPromptText = normalizeArabic(targetText);
-
     let transcription = "";
+    let aiEngineAvailable = true;
+
     try {
       const formData = new FormData();
       formData.append('audio', createReadStream(tempPathWithExt));
@@ -204,27 +241,30 @@ export const gradeRecitation = async (req, res) => {
 
       console.log("Sending audio to local AI Engine for evaluation...");
       const aiResponse = await axios.post('http://127.0.0.1:8000/evaluate', formData, {
-        headers: {
-          ...formData.getHeaders()
-        }
+        headers: formData.getHeaders(),
+        timeout: 30000 // 30s timeout
       });
       
-      transcription = aiResponse.data.transcription;
+      transcription = aiResponse.data.transcription || '';
       if (aiResponse.data.error) {
-         console.warn("AI Engine Warning:", aiResponse.data.error);
+        console.error("AI Engine Error:", aiResponse.data.error);
+        return res.status(400).json({ error: aiResponse.data.error });
       }
     } catch (aiError) {
-      console.error("AI Engine Error, falling back to mock:", aiError.message);
-      // Fallback if python server is not running
-      transcription = "Mock transcript due to AI engine failure";
+      console.error("AI Engine unreachable:", aiError.message);
+      console.error("Make sure the Python AI engine is running: cd ai-engine && python app.py");
+      aiEngineAvailable = false;
+      // Return a clear error instead of fake scores
+      return res.status(503).json({
+        error: "AI Engine is not running. Start it with: cd server/ai-engine && python app.py",
+        aiEngineDown: true
+      });
     }
 
     const normalizedTarget = normalizeArabic(targetText);
     const normalizedActual = normalizeArabic(transcription);
     
     console.log("=== RECITATION GRADING DEBUG ===");
-    console.log("Target Original:", targetText);
-    console.log("Cleaned Prompt:", cleanPromptText);
     console.log("Whisper Output:", transcription);
     console.log("Norm Target:", normalizedTarget);
     console.log("Norm Actual:", normalizedActual);
@@ -232,11 +272,6 @@ export const gradeRecitation = async (req, res) => {
     const { result, score } = alignWords(normalizedTarget, normalizedActual, targetText);
     console.log("Final Score:", score);
     console.log("================================");
-
-    // Clean up temp file
-    fs.unlink(tempPathWithExt, (err) => {
-      if (err) console.error("Error deleting temp audio file:", err);
-    });
 
     res.json({
       score,
@@ -247,5 +282,13 @@ export const gradeRecitation = async (req, res) => {
   } catch (err) {
     console.error("Error grading recitation:", err);
     res.status(500).json({ error: "Internal server error" });
+  } finally {
+    // Always clean up temp files
+    if (tempPathWithExt) {
+      fs.unlink(tempPathWithExt).catch(() => {});
+    }
+    if (req.file && req.file.path) {
+      fs.unlink(req.file.path).catch(() => {});
+    }
   }
 };

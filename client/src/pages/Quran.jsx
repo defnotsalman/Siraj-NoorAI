@@ -31,9 +31,9 @@ export default function Quran() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
           <BookOpen className="text-amber-500" />
-          The Noble Quran
+          Juz' Amma — Para 30
         </h1>
-        <p className="text-slate-400">Read, listen, and practice your recitation.</p>
+        <p className="text-slate-400">Read, listen, and practice your recitation of the last Juz of the Quran.</p>
       </div>
 
       <div className="relative mb-8">
