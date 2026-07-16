@@ -57,9 +57,37 @@ async def evaluate_audio(
     try:
         audio_bytes = await audio.read()
         
-        # Load audio using librosa (handles various formats via soundfile/audioread)
-        # We need to resample to 16kHz for Whisper
-        y, sr = librosa.load(io.BytesIO(audio_bytes), sr=16000)
+        # Save WebM to temp file
+        import tempfile
+        import subprocess
+        import numpy as np
+        import scipy.io.wavfile as wavfile
+        import imageio_ffmpeg
+        
+        fd_in, path_in = tempfile.mkstemp(suffix=".webm")
+        with os.fdopen(fd_in, 'wb') as f:
+            f.write(audio_bytes)
+            
+        fd_out, path_out = tempfile.mkstemp(suffix=".wav")
+        os.close(fd_out) # We'll let ffmpeg overwrite it
+        
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        
+        # Convert to 16kHz mono WAV using ffmpeg
+        subprocess.run([
+            ffmpeg_exe, '-y', '-i', path_in, 
+            '-ar', '16000', '-ac', '1', path_out
+        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # Load WAV
+        sr, y_int16 = wavfile.read(path_out)
+        
+        # Normalize to [-1.0, 1.0] float32 as Whisper expects
+        y = y_int16.astype(np.float32) / 32768.0
+        
+        # Cleanup
+        os.remove(path_in)
+        os.remove(path_out)
         
         # Process input
         input_features = processor(

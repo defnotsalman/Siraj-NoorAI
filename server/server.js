@@ -30,19 +30,19 @@ app.get("/", (req, res) => {
 // We use a simple in-memory limiter here, but Redis is recommended for multi-instance deployments.
 const aiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // limit each IP to 20 AI requests per windowMs
+  max: 2000, // limit each IP to 2000 AI requests per windowMs
   message: { error: "Too many AI requests from this IP, please try again after 15 minutes." }
 });
 
 const adminLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 50,
+  max: 5000,
   message: { error: "Too many admin requests from this IP, please try again after 15 minutes." }
 });
 
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 150,
+  max: 15000,
   message: { error: "Too many requests from this IP, please try again after 15 minutes." }
 });
 
