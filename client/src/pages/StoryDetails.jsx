@@ -495,33 +495,37 @@ function StoryDetails() {
 
               {/* FIXED BOTTOM AUDIO PLAYER - English */}
               {showAudio && language === 'en' && (
-                <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:9999,padding:'0 1rem 1.5rem',display:'flex',justifyContent:'center',pointerEvents:'none'}}>
-                  <div style={{width:'100%',maxWidth:'600px',pointerEvents:'auto',background:'#1e2332',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'2rem',padding:'1.25rem 1.5rem',boxShadow:'0 25px 50px rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
-                      <div style={{width:'3rem',height:'3rem',borderRadius:'0.75rem',background:'rgba(245,158,11,0.2)',color:'#fbbf24',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:'0.875rem'}}>
+                <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 md:pb-6 pointer-events-none flex justify-center">
+                  <div className="w-full max-w-[600px] pointer-events-auto">
+                    <div className="p-4 flex flex-row items-center gap-4 border border-white/5 shadow-2xl rounded-full bg-slate-900/30 backdrop-blur-md">
+
+                      {/* Play / Pause button — same amber style as Urdu player */}
+                      <button
+                        onClick={isPlayingEnglish ? stopEnglish : speakEnglish}
+                        className="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 rounded-full w-12 h-12 flex items-center justify-center hover:scale-105 transition-transform shrink-0 shadow-[0_0_20px_rgba(245,158,11,0.3)]"
+                      >
+                        {isPlayingEnglish ? (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                        ) : (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{marginLeft:'2px'}}><polygon points="5,3 19,12 5,21"/></svg>
+                        )}
+                      </button>
+
+                      {/* Middle label area */}
+                      <div className="flex-1 flex flex-col justify-center">
+                        <span className="text-slate-200 font-bold text-sm tracking-wide">
+                          {isPlayingEnglish ? 'Playing English Story...' : 'English Narration'}
+                        </span>
+                        <span className="text-slate-500 text-xs font-medium">
+                          {isPlayingEnglish ? 'Click pause to stop' : 'Click play to listen'}
+                        </span>
+                      </div>
+
+                      {/* EN badge — same style as the 1x speed button */}
+                      <div className="bg-white/10 hover:bg-white/20 px-5 py-2.5 rounded-full font-bold text-sm text-slate-200 border border-white/5 shrink-0">
                         EN
                       </div>
-                      <div>
-                        <h4 style={{fontSize:'0.875rem',fontWeight:900,color:'white',margin:0}}>English Narration</h4>
-                        <p style={{fontSize:'0.75rem',color:'#94a3b8',margin:0}}>Browser Speech Synthesis</p>
-                      </div>
-                    </div>
-                    <div style={{display:'flex',gap:'0.75rem'}}>
-                      {isPlayingEnglish ? (
-                        <button
-                          onClick={stopEnglish}
-                          style={{padding:'0.75rem 1.5rem',borderRadius:'1rem',background:'#ef4444',color:'white',fontWeight:700,fontSize:'0.875rem',border:'none',cursor:'pointer'}}
-                        >
-                          ⏹ Stop
-                        </button>
-                      ) : (
-                        <button
-                          onClick={speakEnglish}
-                          style={{padding:'0.75rem 1.5rem',borderRadius:'1rem',background:'linear-gradient(to right, #f59e0b, #f97316)',color:'#0f172a',fontWeight:700,fontSize:'0.875rem',border:'none',cursor:'pointer'}}
-                        >
-                          ▶ Play Voice
-                        </button>
-                      )}
+
                     </div>
                   </div>
                 </div>
