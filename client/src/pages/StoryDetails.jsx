@@ -120,12 +120,8 @@ function StoryDetails() {
   const handleListenToggle = () => {
     const targetState = !showAudio;
     setShowAudio(targetState);
-    if (language === 'en') {
-      if (targetState) {
-        speakEnglish();
-      } else {
-        stopEnglish();
-      }
+    if (!targetState) {
+      stopEnglish();
     }
   };
 
