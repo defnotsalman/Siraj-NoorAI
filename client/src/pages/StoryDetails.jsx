@@ -26,6 +26,10 @@ function StoryDetails() {
   const [timingData, setTimingData] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [language, setLanguage] = useState('ur');
+  const [englishSegments, setEnglishSegments] = useState([]);
+  const [activeEnglishCharIndex, setActiveEnglishCharIndex] = useState(-1);
+  const [isPlayingEnglish, setIsPlayingEnglish] = useState(false);
+  const utteranceRef = useRef(null);
 
   const activeWordRef = useRef(null);
   const lastScrolledIndex = useRef(-1);
@@ -76,6 +80,65 @@ function StoryDetails() {
     }
     localStorage.setItem('bookmarks', JSON.stringify(newBookmarks));
   };
+
+  const speakEnglish = () => {
+    if (!story || !story.englishContent) return;
+    
+    // Cancel any active speech
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(story.englishContent);
+    utteranceRef.current = utterance;
+    
+    utterance.onboundary = (event) => {
+      if (event.name === 'word') {
+        setActiveEnglishCharIndex(event.charIndex);
+      }
+    };
+    
+    utterance.onend = () => {
+      setIsPlayingEnglish(false);
+      setActiveEnglishCharIndex(-1);
+    };
+    
+    utterance.onerror = (e) => {
+      console.error("SpeechSynthesis error:", e);
+      setIsPlayingEnglish(false);
+      setActiveEnglishCharIndex(-1);
+    };
+    
+    setIsPlayingEnglish(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopEnglish = () => {
+    window.speechSynthesis.cancel();
+    setIsPlayingEnglish(false);
+    setActiveEnglishCharIndex(-1);
+  };
+
+  useEffect(() => {
+    if (story && story.englishContent) {
+      const text = story.englishContent;
+      const regex = /(\s+)/;
+      const parts = text.split(regex);
+      let currentOffset = 0;
+      const segments = parts.map((part) => {
+        const start = currentOffset;
+        const end = currentOffset + part.length;
+        currentOffset = end;
+        const isWord = !/^\s+$/.test(part) && part.length > 0;
+        return { text: part, start, end, isWord };
+      });
+      setEnglishSegments(segments);
+    }
+  }, [story]);
+
+  useEffect(() => {
+    if (!showAudio || language === 'ur') {
+      stopEnglish();
+    }
+  }, [showAudio, language]);
 
   const handleMarkAsRead = async () => {
     if (hasRead || updating || !user || !profile) {
@@ -304,7 +367,26 @@ function StoryDetails() {
                       {story.englishTitle}
                     </div>
                     <div className="leading-[2.5rem] md:leading-[3.5rem] text-[1.25rem] md:text-[1.5rem] whitespace-pre-wrap">
-                      {story.englishContent}
+                      {englishSegments.length > 0 ? (
+                        englishSegments.map((seg, idx) => {
+                          const isHighlighted = seg.isWord && 
+                            activeEnglishCharIndex >= seg.start && 
+                            activeEnglishCharIndex < seg.end && 
+                            isPlayingEnglish;
+                          return (
+                            <span
+                              key={idx}
+                              className={`transition-colors duration-150 rounded ${
+                                isHighlighted ? 'text-white bg-amber-500/40 shadow-[0_0_10px_rgba(251,191,36,0.3)]' : ''
+                              }`}
+                            >
+                              {seg.text}
+                            </span>
+                          );
+                        })
+                      ) : (
+                        story.englishContent
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -397,6 +479,39 @@ function StoryDetails() {
                 <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 md:pb-6 pointer-events-none flex justify-center">
                   <div className="w-full max-w-[600px] pointer-events-auto">
                     <AudioPlayer storyId={story.id} onTimeUpdate={handleTimeUpdate} compact={true} startTime={0} />
+                  </div>
+                </div>
+              )}
+
+              {showAudio && language === 'en' && (
+                <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 md:pb-6 pointer-events-none flex justify-center animate-in slide-in-from-bottom duration-300">
+                  <div className="w-full max-w-[600px] pointer-events-auto bg-[#1e2332] border border-white/10 rounded-[2rem] p-5 shadow-2xl flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black shadow-inner text-sm tracking-wider">
+                        EN
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-white tracking-wide">English Narration</h4>
+                        <p className="text-xs text-slate-400 font-medium">Powered by browser Speech Synthesis</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {isPlayingEnglish ? (
+                        <button
+                          onClick={stopEnglish}
+                          className="px-6 py-3 rounded-2xl bg-rose-500 hover:bg-rose-600 hover:scale-[1.02] text-white font-bold text-sm transition-all shadow-[0_0_15px_rgba(244,63,94,0.3)] cursor-pointer"
+                        >
+                          Stop
+                        </button>
+                      ) : (
+                        <button
+                          onClick={speakEnglish}
+                          className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:scale-[1.02] text-slate-900 font-bold text-sm transition-all shadow-[0_0_15px_rgba(245,158,11,0.3)] cursor-pointer"
+                        >
+                          Play Voice
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
