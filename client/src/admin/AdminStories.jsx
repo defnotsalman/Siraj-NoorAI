@@ -27,7 +27,7 @@ const AdminStories = () => {
   const fetchStories = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('http://192.168.18.64:5000/api/admin/stories', {
+      const res = await fetch('http://192.168.1.69:5000/api/admin/stories', {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (res.ok) {
@@ -59,7 +59,7 @@ const AdminStories = () => {
       const formData = new FormData();
       formData.append('file', uploadFile);
 
-      const res = await fetch('http://192.168.18.64:5000/api/admin/stories/upload', {
+      const res = await fetch('http://192.168.1.69:5000/api/admin/stories/upload', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${session?.access_token}` },
         body: formData
@@ -87,7 +87,7 @@ const AdminStories = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      const res = await fetch('http://192.168.18.64:5000/api/admin/stories/process', {
+      const res = await fetch('http://192.168.1.69:5000/api/admin/stories/process', {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${session?.access_token}`,

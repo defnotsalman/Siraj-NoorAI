@@ -22,8 +22,18 @@ from fastapi import FastAPI, UploadFile, File, Form
 from pydantic import BaseModel
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from fastapi.middleware.cors import CORSMiddleware
+from inference import TajweedEvaluator
 
 app = FastAPI(title="NoorKids AI Engine", version="2.0")
+
+# Initialize TajweedEvaluator
+print("Initializing TajweedEvaluator...")
+try:
+    tajweed_evaluator = TajweedEvaluator()
+    print("TajweedEvaluator initialized successfully!")
+except Exception as e:
+    print(f"Error initializing TajweedEvaluator: {e}")
+    tajweed_evaluator = None
 
 app.add_middleware(
     CORSMiddleware,
@@ -97,10 +107,11 @@ def get_ffmpeg_path():
     )
 
 
-from typing import Optional
+from typing import Optional, Dict, Any
 
 class EvaluateResponse(BaseModel):
     transcription: str
+    tajweed_analysis: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
 
 
@@ -209,8 +220,20 @@ async def evaluate_audio(
             except Exception:
                 pass
         
+        # Perform phoneme-level Tajweed evaluation
+        tajweed_analysis = None
+        if tajweed_evaluator and expected_text:
+            try:
+                # Use the path_out file (which is already a 16kHz mono WAV)
+                tajweed_analysis = tajweed_evaluator.evaluate_recitation(path_out, expected_text)
+                if tajweed_analysis.get("error"):
+                    print(f"[TAJWEED] Evaluation error: {tajweed_analysis['error']}")
+            except Exception as eval_err:
+                print(f"[TAJWEED] Evaluation execution failed: {eval_err}")
+                
         return {
             "transcription": transcription.strip(),
+            "tajweed_analysis": tajweed_analysis,
             "error": None
         }
         

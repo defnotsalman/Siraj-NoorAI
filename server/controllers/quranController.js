@@ -236,6 +236,7 @@ export const gradeRecitation = async (req, res) => {
 
     const cleanPromptText = normalizeArabic(targetText);
     let transcription = "";
+    let tajweedAnalysis = null;
     let aiEngineAvailable = true;
 
     try {
@@ -246,10 +247,11 @@ export const gradeRecitation = async (req, res) => {
       console.log("Sending audio to local AI Engine for evaluation...");
       const aiResponse = await axios.post('http://127.0.0.1:8000/evaluate', formData, {
         headers: formData.getHeaders(),
-        timeout: 30000 // 30s timeout
+        timeout: 90000 // 90s timeout (since sequential Whisper and Wav2Vec2 runs on CPU can take time)
       });
       
       transcription = aiResponse.data.transcription || '';
+      tajweedAnalysis = aiResponse.data.tajweed_analysis || null;
       if (aiResponse.data.error) {
         console.error("AI Engine Error:", aiResponse.data.error);
         return res.status(400).json({ error: aiResponse.data.error });
@@ -278,9 +280,10 @@ export const gradeRecitation = async (req, res) => {
     console.log("================================");
 
     res.json({
-      score,
+      score: tajweedAnalysis ? tajweedAnalysis.score : score,
       transcript: transcription,
-      words: result
+      words: tajweedAnalysis ? tajweedAnalysis.words : result,
+      tajweedAnalysis
     });
 
   } catch (err) {

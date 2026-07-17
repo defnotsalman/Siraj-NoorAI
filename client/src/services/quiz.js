@@ -1,4 +1,4 @@
-const API_URL = 'http://192.168.18.64:5000/api/quiz';
+const API_URL = 'http://192.168.1.69:5000/api/quiz';
 
 /**
  * Fetch the quiz for a specific story

@@ -148,7 +148,7 @@ function StoryDetails() {
   };
 
   useEffect(() => {
-    fetch(`http://192.168.18.64:5000/api/stories/${id}`)
+    fetch(`http://192.168.1.69:5000/api/stories/${id}`)
       .then(res => {
         if (!res.ok) throw new Error("Not found");
         return res.json();

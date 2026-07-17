@@ -17,7 +17,7 @@ const AdminStoryDetail = () => {
   const fetchStory = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('http://192.168.18.64:5000/api/admin/stories', {
+      const res = await fetch('http://192.168.1.69:5000/api/admin/stories', {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (res.ok) {
@@ -38,7 +38,7 @@ const AdminStoryDetail = () => {
     try {
       setProcessing(true);
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`http://192.168.18.64:5000/api/admin/stories/${storyId}`, {
+      const res = await fetch(`http://192.168.1.69:5000/api/admin/stories/${storyId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
