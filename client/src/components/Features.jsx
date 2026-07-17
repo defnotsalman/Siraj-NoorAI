@@ -6,7 +6,7 @@ function Features() {
   const [storyCount, setStoryCount] = useState(57); // Default fallback
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/stories')
+    fetch('http://192.168.18.64:5000/api/stories')
       .then(res => res.json())
       .then(data => {
         if (data && Array.isArray(data)) {

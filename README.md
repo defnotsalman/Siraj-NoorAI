@@ -41,13 +41,13 @@ It is built for two kinds of people at once. Children around five to ten years o
 - **OpenAI Whisper**: Used for accurate, multi-lingual speech-to-text processing during Quran recitation practice.
 - **Groq (Llama-3)**: Handles high-speed offline batch processing (e.g., extracting moral lessons from 100+ stories during the build step).
 - **Supabase**: Provides Postgres, Authentication (JWT), Row Level Security (RLS), and real-time progress syncing.
-- **Al Quran Cloud API**: Provides the foundational Uthmani text, Tajweed rules, English/Urdu translations, and audio recitations for the Quran section.
+- **Quran.com API (v4)**: Provides the foundational Uthmani text, English/Urdu translations, and audio recitations for the Quran section.
 
 ---
 
 ## 📖 Quran Feature & Tajweed Accuracy
 
-The Quran section uses data fetched directly from the [Al Quran Cloud API](https://alquran.cloud/api), a free and public REST API that requires no authentication. The Uthmani text is displayed with embedded Tajweed markup, colored using a simple legend for easy reading.
+The Quran section uses data fetched directly from the [Quran.com API (v4)](https://api-docs.quran.com/), a free and public REST API. The Uthmani text is displayed with Waqf stopping rules wrapped in styled elements with interactive hover tooltips.
 
 **Recitation Practice (Phase 1)**
 The recitation practice feature uses OpenAI Whisper to transcribe the user's recitation and compares it word-by-word against the normalized target Ayah to provide accuracy feedback (checking if the correct words were recited in the correct order).

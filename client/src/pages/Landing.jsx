@@ -133,7 +133,7 @@ export default function Landing() {
     e.preventDefault();
     setReviewSubmitStatus('submitting');
     try {
-      const res = await fetch('http://localhost:5000/api/reviews', {
+      const res = await fetch('http://192.168.18.64:5000/api/reviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(reviewForm)

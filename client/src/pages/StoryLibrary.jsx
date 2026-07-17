@@ -9,7 +9,7 @@ function StoryLibrary() {
 
   useEffect(() => {
     // Fetch stories from API for the featured section
-    fetch("http://localhost:5000/api/stories")
+    fetch("http://192.168.18.64:5000/api/stories")
       .then(res => res.json())
       .then(data => {
         const sortedData = [...data].sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }));

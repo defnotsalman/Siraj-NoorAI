@@ -35,7 +35,7 @@ function AIChat({ storyId, storyTitle }) {
 
     try {
       setIsTyping(true);
-      const response = await fetch("http://localhost:5000/api/ai/ask", {
+      const response = await fetch("http://192.168.18.64:5000/api/ai/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

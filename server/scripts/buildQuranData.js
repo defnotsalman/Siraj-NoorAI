@@ -36,14 +36,14 @@ async function main() {
 
   const manifest = [];
   
-  // We want Tajweed, English (Asad), Urdu (Jalandhry), and Audio (Alafasy)
-  const editions = 'quran-tajweed,en.asad,ur.jalandhry,ar.alafasy';
+  const cleanTranslation = (text) => text ? text.replace(/<sup[^>]*>.*?<\/sup>/g, '').replace(/<[^>]*>/g, '').trim() : "";
 
   for (const i of PARA_30_SURAHS) {
     const filename = path.join(OUTPUT_DIR, `${i}.json`);
     
-    // Simple idempotency check
-    if (await fs.pathExists(filename)) {
+    // Simple idempotency check (bypassed to force rebuild)
+    const FORCE_REBUILD = true;
+    if (!FORCE_REBUILD && await fs.pathExists(filename)) {
       console.log(`Skipping Surah ${i} (already exists)...`);
       // We still need it in manifest, so we read it
       const existing = await fs.readJson(filename);
@@ -59,43 +59,51 @@ async function main() {
     }
 
     console.log(`Fetching Surah ${i} (${PARA_30_SURAHS.indexOf(i) + 1}/${PARA_30_SURAHS.length})...`);
-    const url = `https://api.alquran.cloud/v1/surah/${i}/editions/${editions}`;
-    const data = await fetchWithRetry(url);
+    
+    const chapterUrl = `https://api.quran.com/api/v4/chapters/${i}`;
+    const chapterData = await fetchWithRetry(chapterUrl);
+    const chapter = chapterData.chapter;
 
-    if (data.code !== 200 || !data.data || data.data.length !== 4) {
+    const versesUrl = `https://api.quran.com/api/v4/verses/by_chapter/${i}?fields=text_uthmani&translations=131,20,54&audio=7&per_page=150`;
+    const versesData = await fetchWithRetry(versesUrl);
+    const verses = versesData.verses;
+
+    if (!chapter || !verses) {
       throw new Error(`Invalid response for surah ${i}`);
     }
 
-    const [tajweedData, englishData, urduData, audioData] = data.data;
-
     // Combine ayahs
-    const combinedAyahs = tajweedData.ayahs.map((ayah, index) => {
+    const combinedAyahs = verses.map((verse) => {
+      const englishText = verse.translations.find(t => t.resource_id === 131)?.text || verse.translations.find(t => t.resource_id === 20)?.text || "";
+      const urduText = verse.translations.find(t => t.resource_id === 54)?.text || "";
+      const audioUrl = verse.audio?.url ? (verse.audio.url.startsWith('/') ? `https://verses.quran.com${verse.audio.url}` : `https://verses.quran.com/${verse.audio.url}`) : "";
+
       return {
-        number: ayah.number,
-        numberInSurah: ayah.numberInSurah,
-        juz: ayah.juz,
-        manzil: ayah.manzil,
-        page: ayah.page,
-        ruku: ayah.ruku,
-        hizbQuarter: ayah.hizbQuarter,
-        sajda: ayah.sajda,
-        text: ayah.text, // Contains tajweed tags
+        number: verse.id,
+        numberInSurah: verse.verse_number,
+        juz: verse.juz_number,
+        manzil: verse.manzil_number,
+        page: verse.page_number,
+        ruku: verse.ruku_number,
+        hizbQuarter: verse.rub_el_hizb_number,
+        sajda: verse.sajdah_number,
+        text: verse.text_uthmani,
         translation: {
-          en: englishData.ayahs[index].text,
-          ur: urduData.ayahs[index].text
+          en: cleanTranslation(englishText),
+          ur: cleanTranslation(urduText)
         },
-        audio: audioData.ayahs[index].audio,
-        audioSecondary: audioData.ayahs[index].audioSecondary
+        audio: audioUrl,
+        audioSecondary: ""
       };
     });
 
     const surahDoc = {
-      number: tajweedData.number,
-      name: tajweedData.name,
-      englishName: tajweedData.englishName,
-      englishNameTranslation: tajweedData.englishNameTranslation,
-      revelationType: tajweedData.revelationType,
-      numberOfAyahs: tajweedData.numberOfAyahs,
+      number: chapter.id,
+      name: chapter.name_arabic,
+      englishName: chapter.name_simple,
+      englishNameTranslation: chapter.translated_name.name,
+      revelationType: chapter.revelation_place,
+      numberOfAyahs: chapter.verses_count,
       ayahs: combinedAyahs
     };
 

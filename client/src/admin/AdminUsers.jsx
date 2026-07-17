@@ -20,7 +20,7 @@ const AdminUsers = () => {
   const fetchUsers = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('http://localhost:5000/api/admin/users', {
+      const res = await fetch('http://192.168.18.64:5000/api/admin/users', {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (res.ok) {
@@ -44,7 +44,7 @@ const AdminUsers = () => {
     
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('http://localhost:5000/api/admin/users/register', {
+      const res = await fetch('http://192.168.18.64:5000/api/admin/users/register', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

@@ -17,7 +17,7 @@ const AdminUserDetail = () => {
         const token = session?.access_token;
         
         // Fetch profile and progress history via Admin API
-        const res = await fetch(`http://localhost:5000/api/admin/users/${userId}`, {
+        const res = await fetch(`http://192.168.18.64:5000/api/admin/users/${userId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -43,7 +43,7 @@ const AdminUserDetail = () => {
     setUpdatingStatus(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}/status`, {
+      const res = await fetch(`http://192.168.18.64:5000/api/admin/users/${userId}/status`, {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',

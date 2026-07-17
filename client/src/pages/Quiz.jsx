@@ -33,7 +33,7 @@ function Quiz() {
         // Fetch both quiz and story metadata
         const [quiz, storyRes] = await Promise.all([
           getQuiz(storyId, lang),
-          fetch(`http://localhost:5000/api/stories/${storyId}`).then(r => r.ok ? r.json() : null)
+          fetch(`http://192.168.18.64:5000/api/stories/${storyId}`).then(r => r.ok ? r.json() : null)
         ]);
         
         setQuizData(quiz);

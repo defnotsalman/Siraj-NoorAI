@@ -10,7 +10,7 @@ export default function AdminReviews() {
   const fetchReviews = async () => {
     try {
       const token = localStorage.getItem("adminToken");
-      const res = await fetch("http://localhost:5000/api/admin/reviews", {
+      const res = await fetch("http://192.168.18.64:5000/api/admin/reviews", {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -35,7 +35,7 @@ export default function AdminReviews() {
   const handleApprove = async (id) => {
     try {
       const token = localStorage.getItem("adminToken");
-      const res = await fetch(`http://localhost:5000/api/admin/reviews/${id}/approve`, {
+      const res = await fetch(`http://192.168.18.64:5000/api/admin/reviews/${id}/approve`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -51,7 +51,7 @@ export default function AdminReviews() {
     if (!window.confirm("Are you sure you want to delete this review?")) return;
     try {
       const token = localStorage.getItem("adminToken");
-      const res = await fetch(`http://localhost:5000/api/admin/reviews/${id}`, {
+      const res = await fetch(`http://192.168.18.64:5000/api/admin/reviews/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });

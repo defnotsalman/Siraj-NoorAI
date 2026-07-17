@@ -1,5 +1,18 @@
 import os
 import io
+import sys
+
+# Configure stdout and stderr to use UTF-8 encoding on Windows to prevent UnicodeEncodeError
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 import torch
 import numpy as np
 import traceback
@@ -24,13 +37,36 @@ MODEL_NAME = "tarteel-ai/whisper-base-ar-quran"
 
 print(f"Loading Whisper model: {MODEL_NAME} ...")
 try:
-    processor = WhisperProcessor.from_pretrained(MODEL_NAME)
-    model = WhisperForConditionalGeneration.from_pretrained(MODEL_NAME)
+    # Try loading from local cache first to avoid internet delays / timeouts
+    try:
+        processor = WhisperProcessor.from_pretrained(MODEL_NAME, local_files_only=True)
+        model = WhisperForConditionalGeneration.from_pretrained(MODEL_NAME, local_files_only=True)
+        print("Loaded model from local cache successfully!")
+    except Exception as cache_err:
+        print(f"Local cache load failed ({cache_err}). Fetching model online...")
+        processor = WhisperProcessor.from_pretrained(MODEL_NAME)
+        model = WhisperForConditionalGeneration.from_pretrained(MODEL_NAME)
     
-    # Force Arabic language and transcription task
-    model.config.forced_decoder_ids = processor.get_decoder_prompt_ids(
-        language="ar", task="transcribe"
-    )
+    # Force Arabic language and transcription task via generation_config
+    if hasattr(model, "generation_config") and model.generation_config is not None:
+        model.generation_config.forced_decoder_ids = processor.get_decoder_prompt_ids(
+            language="ar", task="transcribe"
+        )
+        model.generation_config.max_length = 448
+        model.generation_config.max_new_tokens = None
+    else:
+        from transformers import GenerationConfig
+        model.generation_config = GenerationConfig.from_model_config(model.config)
+        model.generation_config.forced_decoder_ids = processor.get_decoder_prompt_ids(
+            language="ar", task="transcribe"
+        )
+        model.generation_config.max_length = 448
+        model.generation_config.max_new_tokens = None
+        
+    # Clear generation-related parameters from model.config to prevent HuggingFace warnings/errors
+    for attr in ["max_length", "forced_decoder_ids", "suppress_tokens", "begin_suppress_tokens"]:
+        if hasattr(model.config, attr):
+            setattr(model.config, attr, None)
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
@@ -61,9 +97,11 @@ def get_ffmpeg_path():
     )
 
 
+from typing import Optional
+
 class EvaluateResponse(BaseModel):
     transcription: str
-    error: str = None
+    error: Optional[str] = None
 
 
 @app.get("/")
@@ -150,16 +188,26 @@ async def evaluate_audio(
             y, sampling_rate=16000, return_tensors="pt"
         ).input_features.to(model.device)
         
-        # Generate token ids with forced Arabic language
+        # Generate token ids with greedy decoding (num_beams=1, do_sample=False)
+        # to prevent Whisper from autocorrecting/hallucinating incorrect pronunciations
         predicted_ids = model.generate(
             input_features,
-            max_new_tokens=448,  # Allow longer transcriptions
+            generation_config=model.generation_config,
+            num_beams=1,
+            do_sample=False,
         )
         
         # Decode token ids to text
         transcription = processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
         
-        print(f"[EVALUATE] Transcribed: {transcription}")
+        # Safely print to avoid Windows console UnicodeEncodeError
+        try:
+            print(f"[EVALUATE] Transcribed: {transcription}")
+        except UnicodeEncodeError:
+            try:
+                print(f"[EVALUATE] Transcribed (safe encoding): {transcription.encode('ascii', errors='replace').decode('ascii')}")
+            except Exception:
+                pass
         
         return {
             "transcription": transcription.strip(),

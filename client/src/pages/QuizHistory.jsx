@@ -18,7 +18,7 @@ export default function QuizHistory() {
       
       if (pendingIds.length > 0) {
         try {
-          const res = await fetch('http://localhost:5000/api/stories');
+          const res = await fetch('http://192.168.18.64:5000/api/stories');
           if (res.ok) {
             const allStories = await res.json();
             const pending = allStories.filter(s => pendingIds.includes(s.id));

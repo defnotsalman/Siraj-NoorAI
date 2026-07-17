@@ -108,8 +108,12 @@ function normalizeArabic(text) {
   cleanText = cleanText.replace(/\u064A\u0670/g, '\u0627'); // Ya + Dagger Alif -> Alif
   cleanText = cleanText.replace(/\u0670/g, '\u0627'); // Dagger Alif -> Alif
   
-  // Remove diacritics (tashkeel)
+  // Remove diacritics (tashkeel) and standard Unicode Waqf marks
   cleanText = cleanText.replace(/[\u064B-\u065F\u06D6-\u06ED]/g, '');
+  
+  // Remove isolated Waqf letters and marks so they don't count as spoken words
+  cleanText = cleanText.replace(/(?:^|\s+)[\u0637\u062C\u0632\u0635\u0642\u0643](?:\s+|$)/g, ' '); // isolated ط, ج, ز, ص, ق, ك
+  cleanText = cleanText.replace(/(?:^|\s+)(?:لا|صل|قف)(?:\s+|$)/g, ' '); // isolated لا, صل, قف
   
   // Normalize visually similar characters
   cleanText = cleanText.replace(/[\u0622\u0623\u0625\u0671\u0672\u0673]/g, '\u0627'); // Alif variants
@@ -159,7 +163,7 @@ function wordSimilarity(a, b) {
 }
 
 // ── Improved word-by-word alignment with fuzzy matching ──
-const FUZZY_THRESHOLD = 0.65; // Words with ≥65% similarity count as a match
+const FUZZY_THRESHOLD = 1.0; // Disable fuzzy matching/autocorrect (require 100% match)
 
 function alignWords(expectedNorm, actualNorm, expectedOriginal) {
   const expWords = expectedNorm.split(/\s+/).filter(Boolean);

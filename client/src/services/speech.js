@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:5000/api";
+const API_URL = "http://192.168.18.64:5000/api";
 
 /**
  * Returns the URL to stream the audio for a specific story.

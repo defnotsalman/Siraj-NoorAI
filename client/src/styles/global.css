@@ -167,6 +167,33 @@ h1, h2, h3, h4, h5, h6 {
 .tajweed.madd_2, .tajweed.madd_246, .tajweed.madd_4, .tajweed.madd_45, .tajweed.madd_6, .tajweed.madd { color: #ef4444; } /* Red */
 .tajweed.lam_shamsiyyah, .tajweed.hamzat_wasl { color: #64748b; } /* Slate for silent letters */
 
+/* Quran Stopping Rules (Waqf) Symbols */
+.waqf-symbol {
+  font-family: inherit;
+  font-size: 0.9em;
+  margin: 0 0.15em;
+  padding: 0 3px;
+  border-radius: 4px;
+  cursor: help;
+  display: inline-block;
+  vertical-align: super;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.waqf-symbol:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.2);
+}
+
+.waqf-symbol.waqf-lazim { color: #f43f5e; font-weight: bold; } /* Compulsory - Rose/Red */
+.waqf-symbol.waqf-jaaiz { color: #3b82f6; } /* Permissible - Blue */
+.waqf-symbol.waqf-laa { color: #dc2626; font-weight: bold; } /* No Stop - Deep Red */
+.waqf-symbol.waqf-wasl { color: #10b981; } /* Wasl/Continuation Preferred - Emerald */
+.waqf-symbol.waqf-qif { color: #f59e0b; } /* Stop Preferred - Amber */
+.waqf-symbol.waqf-muanaqah { color: #a855f7; } /* Embracing stop - Purple */
+.waqf-symbol.waqf-saktah { color: #eab308; } /* Saktah/Silence - Yellow */
+
 /* Admin Portal Theme Variables (Premium Modern Aesthetic) */
 .admin-portal {
   font-family: var(--font-admin);

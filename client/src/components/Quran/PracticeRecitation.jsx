@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Loader2, AlertCircle } from 'lucide-react';
+import { Mic, Square, Loader2, AlertCircle, Volume2, Play, Pause } from 'lucide-react';
 
 export default function PracticeRecitation({ surahNumber, ayahNumber, targetText }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -7,6 +7,8 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [attemptCount, setAttemptCount] = useState(0);
+  const [lastAttemptAudioUrl, setLastAttemptAudioUrl] = useState(null);
+  const [isPlayingAttempt, setIsPlayingAttempt] = useState(false);
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -14,6 +16,33 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
   const animationFrameRef = useRef(null);
   const audioContextRef = useRef(null);
   const streamRef = useRef(null);
+  const attemptAudioRef = useRef(null);
+
+  const playAttemptAudio = () => {
+    if (!lastAttemptAudioUrl) return;
+
+    if (isPlayingAttempt) {
+      if (attemptAudioRef.current) {
+        attemptAudioRef.current.pause();
+      }
+      setIsPlayingAttempt(false);
+    } else {
+      if (!attemptAudioRef.current) {
+        attemptAudioRef.current = new Audio(lastAttemptAudioUrl);
+      } else {
+        attemptAudioRef.current.src = lastAttemptAudioUrl;
+      }
+      
+      attemptAudioRef.current.onended = () => {
+        setIsPlayingAttempt(false);
+      };
+      
+      attemptAudioRef.current.play().catch(err => {
+        console.error("Failed to play user attempt audio:", err);
+      });
+      setIsPlayingAttempt(true);
+    }
+  };
 
   const cleanupAudio = () => {
     if (animationFrameRef.current) {
@@ -30,13 +59,20 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
+    if (attemptAudioRef.current) {
+      attemptAudioRef.current.pause();
+      attemptAudioRef.current = null;
+    }
   };
 
   useEffect(() => {
     return () => {
       cleanupAudio();
+      if (lastAttemptAudioUrl) {
+        URL.revokeObjectURL(lastAttemptAudioUrl);
+      }
     };
-  }, []);
+  }, [lastAttemptAudioUrl]);
 
   const toggleRecording = async () => {
     if (isRecording) {
@@ -49,6 +85,13 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
       // Start recording
       setError(null);
       setResult(null);
+      
+      // Stop user attempt audio playback if active
+      if (isPlayingAttempt && attemptAudioRef.current) {
+        attemptAudioRef.current.pause();
+        setIsPlayingAttempt(false);
+      }
+      
       cleanupAudio();
 
       try {
@@ -88,6 +131,13 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
           setIsGrading(true);
           const mimeTypeUsed = mediaRecorderRef.current?.mimeType || 'audio/webm';
           const audioBlob = new Blob(audioChunksRef.current, { type: mimeTypeUsed });
+          
+          // Generate a local object URL for the recorded audio so the user can listen back
+          if (lastAttemptAudioUrl) {
+            URL.revokeObjectURL(lastAttemptAudioUrl);
+          }
+          const audioUrl = URL.createObjectURL(audioBlob);
+          setLastAttemptAudioUrl(audioUrl);
           
           const formData = new FormData();
           
@@ -239,20 +289,37 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
           
           {/* Header & Score */}
           <div className="flex items-start justify-between border-b border-white/5 pb-4">
-            <div>
-              <h5 className="text-white font-medium flex items-center gap-2 mb-1">
-                {result.score > 80 ? '✨ Excellent!' : '⚠️ Good effort!'} 
-                <span className="text-xs text-slate-500 font-normal">(Attempt #{attemptCount})</span>
-              </h5>
-              <p className="text-sm text-slate-400">
-                {result.score > 80 
-                  ? "Your pronunciation is highly accurate." 
-                  : "You're close! Focus on pronunciation and rhythm."}
-              </p>
+            <div className="space-y-3">
+              <div>
+                <h5 className="text-white font-medium flex items-center gap-2 mb-1">
+                  {result.score === 100 ? '✨ Excellent!' : '⚠️ Try Again!'} 
+                  <span className="text-xs text-slate-500 font-normal">(Attempt #{attemptCount})</span>
+                </h5>
+                <p className="text-sm text-slate-400">
+                  {result.score === 100 
+                    ? "Your pronunciation is highly accurate." 
+                    : "Some words were pronounced incorrectly. Focus on pronunciation and rhythm."}
+                </p>
+              </div>
+              
+              {/* Play Last Attempt Button */}
+              {lastAttemptAudioUrl && (
+                <button
+                  onClick={playAttemptAudio}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border transition-all ${
+                    isPlayingAttempt 
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/30 hover:bg-rose-500/30' 
+                      : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/30'
+                  }`}
+                >
+                  {isPlayingAttempt ? <Pause size={12} fill="currentColor" /> : <Volume2 size={12} />}
+                  <span>{isPlayingAttempt ? "Stop Playing Your Recitation" : "Listen to Your Last Attempt"}</span>
+                </button>
+              )}
             </div>
             <div className="flex flex-col items-end">
               <span className="text-xs text-slate-500 mb-1">Accuracy Score</span>
-              <span className={`text-2xl font-bold ${result.score > 80 ? 'text-emerald-400' : 'text-amber-500'}`}>
+              <span className={`text-2xl font-bold ${result.score === 100 ? 'text-emerald-400' : 'text-amber-500'}`}>
                 {result.score}%
               </span>
             </div>
