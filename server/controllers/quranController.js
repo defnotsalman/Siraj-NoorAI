@@ -245,7 +245,8 @@ export const gradeRecitation = async (req, res) => {
       formData.append('expected_text', cleanPromptText);
 
       console.log("Sending audio to local AI Engine for evaluation...");
-      const aiResponse = await axios.post('http://127.0.0.1:8000/evaluate', formData, {
+      const aiEngineUrl = process.env.AI_ENGINE_URL || 'http://127.0.0.1:8000';
+      const aiResponse = await axios.post(`${aiEngineUrl}/evaluate`, formData, {
         headers: formData.getHeaders(),
         timeout: 90000 // 90s timeout (since sequential Whisper and Wav2Vec2 runs on CPU can take time)
       });

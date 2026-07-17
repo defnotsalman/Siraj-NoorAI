@@ -1,0 +1,8 @@
+node_modules
+ai-engine
+venv
+output
+temp_audio
+.git
+.env
+.env.*

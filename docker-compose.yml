@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  ai-engine:
+    build:
+      context: ./server/ai-engine
+    ports:
+      - "8000:8000"
+    volumes:
+      - hf-cache:/root/.cache/huggingface
+    restart: always
+
+  server:
+    build:
+      context: ./server
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./server/.env
+    environment:
+      - AI_ENGINE_URL=http://ai-engine:8000
+    volumes:
+      - ./server/output:/app/output
+    depends_on:
+      - ai-engine
+    restart: always
+
+  client:
+    build:
+      context: ./client
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./client/.env
+    depends_on:
+      - server
+    restart: always
+
+volumes:
+  hf-cache:
