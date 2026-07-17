@@ -117,6 +117,18 @@ function StoryDetails() {
     setActiveEnglishCharIndex(-1);
   };
 
+  const handleListenToggle = () => {
+    const targetState = !showAudio;
+    setShowAudio(targetState);
+    if (language === 'en') {
+      if (targetState) {
+        speakEnglish();
+      } else {
+        stopEnglish();
+      }
+    }
+  };
+
   useEffect(() => {
     if (story && story.englishContent) {
       const text = story.englishContent;
@@ -339,7 +351,10 @@ function StoryDetails() {
                 {story.englishContent && (
                   <div className="absolute top-8 right-8 flex items-center bg-[#131722] rounded-full p-1 border border-white/10">
                     <button
-                      onClick={() => setLanguage('ur')}
+                      onClick={() => {
+                        setLanguage('ur');
+                        setShowAudio(true);
+                      }}
                       className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all ${
                         language === 'ur' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:text-white'
                       }`}
@@ -347,7 +362,10 @@ function StoryDetails() {
                       اردو
                     </button>
                     <button
-                      onClick={() => setLanguage('en')}
+                      onClick={() => {
+                        setLanguage('en');
+                        setShowAudio(true);
+                      }}
                       className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all ${
                         language === 'en' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:text-white'
                       }`}
@@ -531,7 +549,7 @@ function StoryDetails() {
           <div className="flex flex-col gap-4">
             
             <button 
-              onClick={() => setShowAudio(!showAudio)}
+              onClick={handleListenToggle}
               className="w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 font-bold border border-transparent hover:border-white/5 hover:bg-[#343b4e] bg-[#2a3041] text-slate-200"
             >
               <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-white/5 text-slate-300">
