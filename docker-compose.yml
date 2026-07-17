@@ -20,7 +20,10 @@ services:
     environment:
       - AI_ENGINE_URL=http://ai-engine:8000
     volumes:
-      - ./server/output:/app/output
+      - ./server:/app
+      - /app/node_modules
+      - /app/ai-engine
+      - /app/output
     depends_on:
       - ai-engine
     restart: always
@@ -32,6 +35,9 @@ services:
       - "5173:5173"
     env_file:
       - ./client/.env
+    volumes:
+      - ./client:/app
+      - /app/node_modules
     depends_on:
       - server
     restart: always
