@@ -31,6 +31,8 @@ function StoryDetails() {
   const [isPlayingEnglish, setIsPlayingEnglish] = useState(false);
   const utteranceRef = useRef(null);
 
+  console.log("NoorKidsApp Audio Controller Loaded (v2.1) - Language:", language, "ShowAudio:", showAudio);
+
   const activeWordRef = useRef(null);
   const lastScrolledIndex = useRef(-1);
   const currentTimeRef = useRef(0);
@@ -498,7 +500,7 @@ function StoryDetails() {
               )}
 
               {showAudio && language === 'en' && (
-                <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 md:pb-6 pointer-events-none flex justify-center animate-in slide-in-from-bottom duration-300">
+                <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 md:pb-6 pointer-events-none flex justify-center animate-in fade-in slide-in-from-bottom-8 duration-300">
                   <div className="w-full max-w-[600px] pointer-events-auto bg-[#1e2332] border border-white/10 rounded-[2rem] p-5 shadow-2xl flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black shadow-inner text-sm tracking-wider">
