@@ -349,10 +349,7 @@ function StoryDetails() {
                 {story.englishContent && (
                   <div className="absolute top-8 right-8 flex items-center bg-[#131722] rounded-full p-1 border border-white/10">
                     <button
-                      onClick={() => {
-                        setLanguage('ur');
-                        setShowAudio(true);
-                      }}
+                      onClick={() => setLanguage('ur')}
                       className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all ${
                         language === 'ur' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:text-white'
                       }`}
@@ -360,10 +357,7 @@ function StoryDetails() {
                       اردو
                     </button>
                     <button
-                      onClick={() => {
-                        setLanguage('en');
-                        setShowAudio(true);
-                      }}
+                      onClick={() => setLanguage('en')}
                       className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all ${
                         language === 'en' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:text-white'
                       }`}
@@ -461,36 +455,36 @@ function StoryDetails() {
                 )}
               </div>
 
-                {/* MORAL LESSON */}
-                {(story.moralLesson || story.englishMoralLesson) && (
-                  <div className="mt-16 bg-gradient-to-br from-emerald-900/40 to-emerald-800/20 border border-emerald-500/30 rounded-3xl p-8 md:p-10 shadow-lg relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl"></div>
-                    
-                    <div className="flex items-center gap-4 mb-6 relative z-10">
-                      <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-2xl shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                        💡
-                      </div>
-                      <h3 className="text-xl md:text-2xl font-bold text-emerald-400 tracking-wide uppercase text-shadow-sm">
-                        Moral Lesson
-                      </h3>
+              {/* MORAL LESSON */}
+              {(story.moralLesson || story.englishMoralLesson) && (
+                <div className="mt-16 bg-gradient-to-br from-emerald-900/40 to-emerald-800/20 border border-emerald-500/30 rounded-3xl p-8 md:p-10 shadow-lg relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl"></div>
+                  
+                  <div className="flex items-center gap-4 mb-6 relative z-10">
+                    <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-2xl shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                      💡
                     </div>
-                    
-                    {language === 'en' && story.englishMoralLesson ? (
-                      <p className="text-slate-300 leading-relaxed font-sans text-left relative z-10 text-[1.1rem]">
-                        {story.englishMoralLesson}
-                      </p>
-                    ) : (
-                      <p 
-                        dir="rtl" 
-                        className="text-right font-nastaliq text-[1.8rem] md:text-[2.2rem] leading-[3rem] md:leading-[4rem] text-emerald-100 relative z-10"
-                      >
-                        {story.moralLesson}
-                      </p>
-                    )}
+                    <h3 className="text-xl md:text-2xl font-bold text-emerald-400 tracking-wide uppercase text-shadow-sm">
+                      Moral Lesson
+                    </h3>
                   </div>
-                )}
+                  
+                  {language === 'en' && story.englishMoralLesson ? (
+                    <p className="text-slate-300 leading-relaxed font-sans text-left relative z-10 text-[1.1rem]">
+                      {story.englishMoralLesson}
+                    </p>
+                  ) : (
+                    <p 
+                      dir="rtl" 
+                      className="text-right font-nastaliq text-[1.8rem] md:text-[2.2rem] leading-[3rem] md:leading-[4rem] text-emerald-100 relative z-10"
+                    >
+                      {story.moralLesson}
+                    </p>
+                  )}
+                </div>
+              )}
 
-              {/* FIXED BOTTOM AUDIO PLAYER */}
+              {/* FIXED BOTTOM AUDIO PLAYER - Urdu */}
               {showAudio && language === 'ur' && (
                 <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 md:pb-6 pointer-events-none flex justify-center">
                   <div className="w-full max-w-[600px] pointer-events-auto">
@@ -499,32 +493,33 @@ function StoryDetails() {
                 </div>
               )}
 
+              {/* FIXED BOTTOM AUDIO PLAYER - English */}
               {showAudio && language === 'en' && (
-                <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 md:pb-6 pointer-events-none flex justify-center animate-in fade-in slide-in-from-bottom-8 duration-300">
-                  <div className="w-full max-w-[600px] pointer-events-auto bg-[#1e2332] border border-white/10 rounded-[2rem] p-5 shadow-2xl flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black shadow-inner text-sm tracking-wider">
+                <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:9999,padding:'0 1rem 1.5rem',display:'flex',justifyContent:'center',pointerEvents:'none'}}>
+                  <div style={{width:'100%',maxWidth:'600px',pointerEvents:'auto',background:'#1e2332',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'2rem',padding:'1.25rem 1.5rem',boxShadow:'0 25px 50px rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
+                      <div style={{width:'3rem',height:'3rem',borderRadius:'0.75rem',background:'rgba(245,158,11,0.2)',color:'#fbbf24',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:'0.875rem'}}>
                         EN
                       </div>
                       <div>
-                        <h4 className="text-sm font-black text-white tracking-wide">English Narration</h4>
-                        <p className="text-xs text-slate-400 font-medium">Powered by browser Speech Synthesis</p>
+                        <h4 style={{fontSize:'0.875rem',fontWeight:900,color:'white',margin:0}}>English Narration</h4>
+                        <p style={{fontSize:'0.75rem',color:'#94a3b8',margin:0}}>Browser Speech Synthesis</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div style={{display:'flex',gap:'0.75rem'}}>
                       {isPlayingEnglish ? (
                         <button
                           onClick={stopEnglish}
-                          className="px-6 py-3 rounded-2xl bg-rose-500 hover:bg-rose-600 hover:scale-[1.02] text-white font-bold text-sm transition-all shadow-[0_0_15px_rgba(244,63,94,0.3)] cursor-pointer"
+                          style={{padding:'0.75rem 1.5rem',borderRadius:'1rem',background:'#ef4444',color:'white',fontWeight:700,fontSize:'0.875rem',border:'none',cursor:'pointer'}}
                         >
-                          Stop
+                          ⏹ Stop
                         </button>
                       ) : (
                         <button
                           onClick={speakEnglish}
-                          className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:scale-[1.02] text-slate-900 font-bold text-sm transition-all shadow-[0_0_15px_rgba(245,158,11,0.3)] cursor-pointer"
+                          style={{padding:'0.75rem 1.5rem',borderRadius:'1rem',background:'linear-gradient(to right, #f59e0b, #f97316)',color:'#0f172a',fontWeight:700,fontSize:'0.875rem',border:'none',cursor:'pointer'}}
                         >
-                          Play Voice
+                          ▶ Play Voice
                         </button>
                       )}
                     </div>

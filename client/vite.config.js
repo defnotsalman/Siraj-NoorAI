@@ -6,6 +6,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   server: {
     host: true,
+    watch: {
+      usePolling: true,
+      interval: 300,
+    },
   },
   plugins: [
     react(),
