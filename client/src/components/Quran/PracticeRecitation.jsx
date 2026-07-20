@@ -154,17 +154,56 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
           formData.append('audio', audioBlob, `recitation.${extension}`);
 
           try {
-            const response = await fetch('http://localhost:5000/api/quran/practice', {
+            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            const response = await fetch(`${API_BASE}/api/quran/practice`, {
               method: 'POST',
               body: formData,
             });
             const data = await response.json();
+            console.log("[PracticeRecitation] Server response:", JSON.stringify(data));
             
             if (!response.ok) {
               if (data.aiEngineDown) {
                 throw new Error("AI Engine is not running. Ask your developer to start it.");
               }
               throw new Error(data.error || "Failed to grade recitation");
+            }
+            
+            // Ensure words array is never empty — fallback to target text split into words
+            if (!data.words || data.words.length === 0) {
+              console.warn("[PracticeRecitation] Server returned empty words array — generating fallback from targetText");
+              const fallbackWords = targetText.split(/\s+/).filter(Boolean).map(word => ({
+                word: word,
+                matched: false,
+                correct: false,
+                issue: null,
+                letter: null,
+                note: 'Word comparison based on Whisper transcription'
+              }));
+              
+              // If we have a transcript, try to match words
+              if (data.transcript) {
+                const transcriptWords = data.transcript.split(/\s+/).filter(Boolean);
+                // Simple sequential matching
+                let tIdx = 0;
+                for (let fw of fallbackWords) {
+                  if (tIdx < transcriptWords.length) {
+                    // Very simple check: if the transcript word contains the same root letters
+                    const targetClean = fw.word.replace(/[\u0610-\u061A\u064B-\u065F\u0670]/g, '');
+                    const transClean = transcriptWords[tIdx].replace(/[\u0610-\u061A\u064B-\u065F\u0670]/g, '');
+                    if (targetClean === transClean) {
+                      fw.matched = true;
+                      fw.correct = true;
+                    }
+                    tIdx++;
+                  }
+                }
+              }
+              
+              data.words = fallbackWords;
+              // Recalculate score from fallback
+              const correctCount = data.words.filter(w => w.matched).length;
+              data.score = data.words.length > 0 ? Math.round((correctCount / data.words.length) * 100) : 0;
             }
             
             setResult(data);
@@ -328,21 +367,23 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
           </div>
 
           {/* Word Matching Visualization */}
-          <div className="bg-white/[0.02] p-4 rounded-lg">
-            <div className="flex flex-wrap gap-2 text-2xl font-nastaliq justify-end leading-loose" dir="rtl">
-              {result.words.map((w, i) => {
-                const isCorrect = w.matched !== undefined ? w.matched : w.correct;
-                return (
-                  <span key={i} className={isCorrect ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'text-rose-400 border-b-2 border-rose-500/50 px-1'}>
-                    {w.word}
-                  </span>
-                );
-              })}
+          {result.words && result.words.length > 0 && (
+            <div className="bg-white/[0.02] p-4 rounded-lg">
+              <div className="flex flex-wrap gap-2 text-2xl font-nastaliq justify-end leading-loose" dir="rtl">
+                {result.words.map((w, i) => {
+                  const isCorrect = w.matched !== undefined ? w.matched : w.correct;
+                  return (
+                    <span key={i} className={isCorrect ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'text-rose-400 border-b-2 border-rose-500/50 px-1'}>
+                      {w.word}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Pronunciation error details */}
-          {result.words && result.words.some(w => w.correct === false) && (
+          {result.words && result.words.length > 0 && result.words.some(w => w.correct === false) && (
             <div className="bg-rose-500/10 border border-rose-500/20 rounded-lg p-4 space-y-2 text-left" dir="ltr">
               <h6 className="text-rose-300 font-semibold text-xs uppercase tracking-wider">Pronunciation feedback:</h6>
               {result.words.filter(w => w.correct === false).map((w, idx) => (

@@ -140,6 +140,7 @@ def health_check():
 async def evaluate_audio(
     audio: UploadFile = File(...),
     expected_text: str = Form(None),
+    original_text: str = Form(None),
     surah_number: Optional[int] = Form(None),
     ayah_number: Optional[int] = Form(None)
 ):
@@ -148,6 +149,7 @@ async def evaluate_audio(
     tarteel-ai/whisper-base-ar-quran — a Whisper model fine-tuned specifically
     on Quranic Arabic recitation.
     """
+    print(f"[EVALUATE] Received params: expected_text={expected_text[:30] if expected_text else None}, original_text={original_text[:30] if original_text else None}, surah={surah_number}, ayah={ayah_number}")
     if model is None or processor is None:
         return {"transcription": "", "error": "Model not loaded properly on the server."}
         
@@ -224,12 +226,14 @@ async def evaluate_audio(
         
         # Perform phoneme-level Tajweed evaluation
         tajweed_analysis = None
-        if tajweed_evaluator and expected_text:
+        # Use original_text (with diacritics) for phonetizer, falling back to expected_text
+        eval_text = original_text if original_text else expected_text
+        if tajweed_evaluator and eval_text:
             try:
                 # Use the path_out file (which is already a 16kHz mono WAV)
                 tajweed_analysis = tajweed_evaluator.evaluate_recitation(
                     path_out, 
-                    expected_text,
+                    eval_text,
                     surah_number=surah_number,
                     ayah_number=ayah_number
                 )

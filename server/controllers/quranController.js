@@ -226,6 +226,7 @@ export const gradeRecitation = async (req, res) => {
     }
     
     const { targetText, surahNumber, ayahNumber } = req.body;
+    console.log("[PRACTICE] req.body fields:", JSON.stringify({ targetText: targetText?.substring(0, 30), surahNumber, ayahNumber }));
     if (!targetText) {
       return res.status(400).json({ error: "Target text is required." });
     }
@@ -243,10 +244,13 @@ export const gradeRecitation = async (req, res) => {
       const formData = new FormData();
       formData.append('audio', createReadStream(tempPathWithExt));
       formData.append('expected_text', cleanPromptText);
-      if (surahNumber) formData.append('surah_number', surahNumber);
-      if (ayahNumber) formData.append('ayah_number', ayahNumber);
+      // Also send the original (non-normalized) text for Uthmani lookup
+      formData.append('original_text', targetText);
+      if (surahNumber) formData.append('surah_number', String(surahNumber));
+      if (ayahNumber) formData.append('ayah_number', String(ayahNumber));
 
       console.log("Sending audio to local AI Engine for evaluation...");
+      console.log("[PRACTICE] Forwarding surah_number:", surahNumber, "ayah_number:", ayahNumber);
       const aiEngineUrl = process.env.AI_ENGINE_URL || 'http://127.0.0.1:8000';
       const aiResponse = await axios.post(`${aiEngineUrl}/evaluate`, formData, {
         headers: formData.getHeaders(),
@@ -280,16 +284,24 @@ export const gradeRecitation = async (req, res) => {
 
     const { result, score } = alignWords(normalizedTarget, normalizedActual, targetText);
     console.log("Final Score:", score);
+    console.log("AlignWords result count:", result.length);
+    console.log("AlignWords result sample:", JSON.stringify(result.slice(0, 3)));
+    console.log("req.body surahNumber:", req.body.surahNumber, "ayahNumber:", req.body.ayahNumber);
+    console.log("tajweedAnalysis:", tajweedAnalysis ? JSON.stringify({
+      score: tajweedAnalysis.score,
+      wordsLen: tajweedAnalysis.words?.length,
+      error: tajweedAnalysis.error
+    }) : "null");
     console.log("================================");
 
     const hasTajweedDetails = tajweedAnalysis && tajweedAnalysis.words && tajweedAnalysis.words.length > 0;
 
-    res.json({
+    const responsePayload = {
       score: hasTajweedDetails ? tajweedAnalysis.score : score,
       transcript: transcription,
       words: hasTajweedDetails ? tajweedAnalysis.words.map(w => ({
         word: w.word,
-        matched: w.correct,  // Map correct to matched for compatibility
+        matched: w.correct,
         correct: w.correct,
         issue: w.issue,
         letter: w.letter,
@@ -297,7 +309,12 @@ export const gradeRecitation = async (req, res) => {
       })) : result,
       overall_pass: hasTajweedDetails ? tajweedAnalysis.overall_pass : (score === 100),
       tajweedAnalysis
-    });
+    };
+
+    console.log("RESPONSE words count:", responsePayload.words.length);
+    console.log("RESPONSE words:", JSON.stringify(responsePayload.words));
+
+    res.json(responsePayload);
 
   } catch (err) {
     console.error("Error grading recitation:", err);
