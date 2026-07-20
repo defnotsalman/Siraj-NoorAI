@@ -282,10 +282,12 @@ export const gradeRecitation = async (req, res) => {
     console.log("Final Score:", score);
     console.log("================================");
 
+    const hasTajweedDetails = tajweedAnalysis && tajweedAnalysis.words && tajweedAnalysis.words.length > 0;
+
     res.json({
-      score: tajweedAnalysis ? tajweedAnalysis.score : score,
+      score: hasTajweedDetails ? tajweedAnalysis.score : score,
       transcript: transcription,
-      words: tajweedAnalysis ? tajweedAnalysis.words.map(w => ({
+      words: hasTajweedDetails ? tajweedAnalysis.words.map(w => ({
         word: w.word,
         matched: w.correct,  // Map correct to matched for compatibility
         correct: w.correct,
@@ -293,7 +295,7 @@ export const gradeRecitation = async (req, res) => {
         letter: w.letter,
         note: w.note
       })) : result,
-      overall_pass: tajweedAnalysis ? tajweedAnalysis.overall_pass : (score === 100),
+      overall_pass: hasTajweedDetails ? tajweedAnalysis.overall_pass : (score === 100),
       tajweedAnalysis
     });
 

@@ -140,6 +140,9 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
           setLastAttemptAudioUrl(audioUrl);
           
           const formData = new FormData();
+          formData.append('targetText', targetText);
+          if (surahNumber) formData.append('surahNumber', surahNumber);
+          if (ayahNumber) formData.append('ayahNumber', ayahNumber);
           
           // Set appropriate file extension
           let extension = 'webm';
@@ -149,9 +152,6 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
           else if (mimeTypeUsed.includes('aac')) extension = 'aac';
 
           formData.append('audio', audioBlob, `recitation.${extension}`);
-          formData.append('targetText', targetText);
-          if (surahNumber) formData.append('surahNumber', surahNumber);
-          if (ayahNumber) formData.append('ayahNumber', ayahNumber);
 
           try {
             const response = await fetch('http://localhost:5000/api/quran/practice', {
