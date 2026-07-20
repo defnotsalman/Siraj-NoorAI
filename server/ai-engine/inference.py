@@ -88,13 +88,13 @@ class TajweedEvaluator:
         # Fallback to direct input if not found in cache
         return input_text
 
-    def evaluate_recitation(self, audio_path: str, target_ayah_text: str) -> Dict[str, Any]:
+    def evaluate_recitation(self, audio_path: str, target_ayah_text: str, surah_number: int = None, ayah_number: int = None) -> Dict[str, Any]:
         """
         Evaluates the recitation audio file against target_ayah_text using CTC-based QPS alignment.
         Returns word-by-word pronunciation feedback.
         """
         try:
-            logger.info(f"Starting evaluation of {audio_path} against '{target_ayah_text}'")
+            logger.info(f"Starting evaluation of {audio_path} against '{target_ayah_text}' (Surah: {surah_number}, Ayah: {ayah_number})")
             
             # 1. Preprocess Audio
             y = preprocess_audio(audio_path, target_sr=16000)
@@ -107,7 +107,19 @@ class TajweedEvaluator:
                 }
 
             # 2. Get reference Uthmani text and phonetize
-            uthmani_text = self.get_uthmani_text(target_ayah_text)
+            if surah_number and ayah_number:
+                try:
+                    # Convert to integers to make sure they are valid
+                    s_idx = int(surah_number)
+                    a_idx = int(ayah_number)
+                    uthmani_text = Aya(sura_idx=s_idx, aya_idx=a_idx).get().uthmani
+                    logger.info(f"Resolved Uthmani target directly by index: {uthmani_text}")
+                except Exception as index_err:
+                    logger.warning(f"Uthmani direct lookup failed ({index_err}). Falling back to text lookup.")
+                    uthmani_text = self.get_uthmani_text(target_ayah_text)
+            else:
+                uthmani_text = self.get_uthmani_text(target_ayah_text)
+
             logger.info(f"Resolved Uthmani target: {uthmani_text}")
             ref_qps = quran_phonetizer(uthmani_text, self.moshaf)
 

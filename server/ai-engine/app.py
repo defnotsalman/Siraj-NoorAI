@@ -139,7 +139,9 @@ def health_check():
 @app.post("/evaluate", response_model=EvaluateResponse)
 async def evaluate_audio(
     audio: UploadFile = File(...),
-    expected_text: str = Form(None)
+    expected_text: str = Form(None),
+    surah_number: Optional[int] = Form(None),
+    ayah_number: Optional[int] = Form(None)
 ):
     """
     Receives an audio file (typically webm or wav) and transcribes it using
@@ -225,7 +227,12 @@ async def evaluate_audio(
         if tajweed_evaluator and expected_text:
             try:
                 # Use the path_out file (which is already a 16kHz mono WAV)
-                tajweed_analysis = tajweed_evaluator.evaluate_recitation(path_out, expected_text)
+                tajweed_analysis = tajweed_evaluator.evaluate_recitation(
+                    path_out, 
+                    expected_text,
+                    surah_number=surah_number,
+                    ayah_number=ayah_number
+                )
                 if tajweed_analysis.get("error"):
                     print(f"[TAJWEED] Evaluation error: {tajweed_analysis['error']}")
             except Exception as eval_err:

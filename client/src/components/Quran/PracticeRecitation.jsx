@@ -150,6 +150,8 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
 
           formData.append('audio', audioBlob, `recitation.${extension}`);
           formData.append('targetText', targetText);
+          if (surahNumber) formData.append('surahNumber', surahNumber);
+          if (ayahNumber) formData.append('ayahNumber', ayahNumber);
 
           try {
             const response = await fetch('http://localhost:5000/api/quran/practice', {

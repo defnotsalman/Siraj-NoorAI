@@ -225,7 +225,7 @@ export const gradeRecitation = async (req, res) => {
       return res.status(400).json({ error: "No audio file provided." });
     }
     
-    const { targetText } = req.body;
+    const { targetText, surahNumber, ayahNumber } = req.body;
     if (!targetText) {
       return res.status(400).json({ error: "Target text is required." });
     }
@@ -243,6 +243,8 @@ export const gradeRecitation = async (req, res) => {
       const formData = new FormData();
       formData.append('audio', createReadStream(tempPathWithExt));
       formData.append('expected_text', cleanPromptText);
+      if (surahNumber) formData.append('surah_number', surahNumber);
+      if (ayahNumber) formData.append('ayah_number', ayahNumber);
 
       console.log("Sending audio to local AI Engine for evaluation...");
       const aiEngineUrl = process.env.AI_ENGINE_URL || 'http://127.0.0.1:8000';
