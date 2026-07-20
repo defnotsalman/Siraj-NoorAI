@@ -235,7 +235,8 @@ async def evaluate_audio(
                     path_out, 
                     eval_text,
                     surah_number=surah_number,
-                    ayah_number=ayah_number
+                    ayah_number=ayah_number,
+                    whisper_transcript=transcription
                 )
                 if tajweed_analysis.get("error"):
                     print(f"[TAJWEED] Evaluation error: {tajweed_analysis['error']}")

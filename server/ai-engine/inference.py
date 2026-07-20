@@ -88,7 +88,16 @@ class TajweedEvaluator:
         # Fallback to direct input if not found in cache
         return input_text
 
-    def evaluate_recitation(self, audio_path: str, target_ayah_text: str, surah_number: int = None, ayah_number: int = None) -> Dict[str, Any]:
+    @staticmethod
+    def _normalize_ar(text: str) -> str:
+        """Strip diacritics / tatweel for loose word comparison."""
+        import re
+        text = re.sub('[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]', '', text)
+        text = text.replace('\u0640', '')  # tatweel
+        text = text.replace('\u0671', '\u0627')  # alef wasla -> alef
+        return text.strip()
+
+    def evaluate_recitation(self, audio_path: str, target_ayah_text: str, surah_number: int = None, ayah_number: int = None, whisper_transcript: str = None) -> Dict[str, Any]:
         """
         Evaluates the recitation audio file against target_ayah_text using CTC-based QPS alignment.
         Returns word-by-word pronunciation feedback.
@@ -241,7 +250,35 @@ class TajweedEvaluator:
                             words_result[w_idx]["letter"] = ref_sifa.phonemes
                             words_result[w_idx]["note"] = "hold the nasal sound a bit longer"
 
-            # 7. Compute overall pass & accuracy score
+            # 7. Cross-reference with Whisper transcript to detect unspoken words
+            if whisper_transcript:
+                whisper_words = [self._normalize_ar(w) for w in whisper_transcript.split()]
+                spoken_count = len(whisper_words)
+                logger.info(f"Whisper detected {spoken_count} words out of {len(words_result)} target words")
+                
+                # Determine which target words were actually spoken via sequential matching
+                spoken_flags = [False] * len(words_result)
+                w_idx = 0
+                for i, wr in enumerate(words_result):
+                    if w_idx >= spoken_count:
+                        break
+                    target_norm = self._normalize_ar(wr["word"])
+                    # Allow fuzzy: if Whisper word shares >50% characters with target
+                    whisper_w = whisper_words[w_idx]
+                    common = sum(1 for c in whisper_w if c in target_norm)
+                    similarity = common / max(len(target_norm), 1)
+                    if similarity > 0.3:
+                        spoken_flags[i] = True
+                        w_idx += 1
+                
+                # Mark unspoken words
+                for i, wr in enumerate(words_result):
+                    if not spoken_flags[i]:
+                        wr["correct"] = False
+                        wr["issue"] = "not_recited"
+                        wr["note"] = "this word was not recited"
+
+            # 8. Compute overall pass & accuracy score
             correct_words = sum(1 for w in words_result if w["correct"])
             overall_pass = (correct_words == len(words_result))
             score = int((correct_words / len(words_result)) * 100) if len(words_result) > 0 else 0
