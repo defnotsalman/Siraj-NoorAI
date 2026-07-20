@@ -27,7 +27,7 @@ import "./styles/global.css";
     return originalFetch(input, init);
   };
 
-  // Intercept media source bindings (Audio/Video tags)
+  // Intercept media source bindings (Audio/Video tags) via property setter
   const originalSrcDescriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
   if (originalSrcDescriptor) {
     Object.defineProperty(HTMLMediaElement.prototype, 'src', {
@@ -46,6 +46,17 @@ import "./styles/global.css";
       enumerable: true
     });
   }
+
+  // Intercept attribute bindings (like src) set via React/DOM setAttribute
+  const originalSetAttribute = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function(name, value) {
+    if (name === 'src' && typeof value === 'string') {
+      const apiBase = getApiBase();
+      value = value.replace('http://localhost:5000', apiBase)
+                   .replace('http://127.0.0.1:5000', apiBase);
+    }
+    return originalSetAttribute.call(this, name, value);
+  };
 })();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
