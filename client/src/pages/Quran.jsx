@@ -8,7 +8,7 @@ export default function Quran() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    fetch('http://192.168.1.69:5000/api/quran/surahs')
+    fetch('http://localhost:5000/api/quran/surahs')
       .then(res => res.json())
       .then(data => {
         setSurahs(data);

@@ -24,10 +24,10 @@ const AdminDashboard = () => {
         if (!token) throw new Error("No authentication token found");
         
         const [usersRes, storiesRes] = await Promise.all([
-          fetch('http://192.168.1.69:5000/api/admin/users', {
+          fetch('http://localhost:5000/api/admin/users', {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch('http://192.168.1.69:5000/api/admin/stories', {
+          fetch('http://localhost:5000/api/admin/stories', {
             headers: { 'Authorization': `Bearer ${token}` }
           })
         ]);

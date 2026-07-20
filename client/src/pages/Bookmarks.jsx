@@ -14,7 +14,7 @@ function Bookmarks() {
   const [selected, setSelected] = useState("All");
 
   useEffect(() => {
-    fetch("http://192.168.1.69:5000/api/stories")
+    fetch("http://localhost:5000/api/stories")
       .then(res => {
         if (!res.ok) throw new Error("Failed to fetch stories");
         return res.json();

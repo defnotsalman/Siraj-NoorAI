@@ -1,4 +1,5 @@
-const API_URL = "http://192.168.1.69:5000/api";
+import API_BASE from './api';
+const API_URL = `${API_BASE}/api`;
 
 /**
  * Returns the URL to stream the audio for a specific story.

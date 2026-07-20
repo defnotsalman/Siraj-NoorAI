@@ -1,4 +1,5 @@
-const API_URL = 'http://192.168.1.69:5000/api/quiz';
+import API_BASE from './api';
+const API_URL = `${API_BASE}/api/quiz`;
 
 /**
  * Fetch the quiz for a specific story

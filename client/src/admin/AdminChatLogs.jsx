@@ -10,7 +10,7 @@ const AdminChatLogs = () => {
     const fetchLogs = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch('http://192.168.1.69:5000/api/admin/chat-logs', {
+        const res = await fetch('http://localhost:5000/api/admin/chat-logs', {
           headers: { 'Authorization': `Bearer ${session?.access_token}` }
         });
         if (res.ok) {

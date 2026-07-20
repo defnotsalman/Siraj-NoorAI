@@ -152,7 +152,7 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
           formData.append('targetText', targetText);
 
           try {
-            const response = await fetch('http://192.168.1.69:5000/api/quran/practice', {
+            const response = await fetch('http://localhost:5000/api/quran/practice', {
               method: 'POST',
               body: formData,
             });

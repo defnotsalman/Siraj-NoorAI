@@ -80,7 +80,7 @@ export default function SurahDetails() {
   const [isDownloaded, setIsDownloaded] = useState(false);
 
   useEffect(() => {
-    fetch(`http://192.168.1.69:5000/api/quran/surah/${id}`)
+    fetch(`http://localhost:5000/api/quran/surah/${id}`)
       .then(res => res.json())
       .then(data => {
         setSurah(data);
@@ -94,7 +94,7 @@ export default function SurahDetails() {
     // Check if this surah is already cached
     if ('caches' in window) {
       caches.open('quran-data').then(cache => {
-        cache.match(`http://192.168.1.69:5000/api/quran/surah/${id}`).then(response => {
+        cache.match(`http://localhost:5000/api/quran/surah/${id}`).then(response => {
           if (response) setIsDownloaded(true);
         });
       });
@@ -113,11 +113,11 @@ export default function SurahDetails() {
       // Ensure JSON data is cached (usually Workbox NetworkFirst does this, but we explicitly cache it to be safe)
       if ('caches' in window) {
         const dataCache = await caches.open('quran-data');
-        await dataCache.add(`http://192.168.1.69:5000/api/quran/surah/${id}`);
+        await dataCache.add(`http://localhost:5000/api/quran/surah/${id}`);
       }
 
       // Download all audio files in parallel batches (e.g. 5 at a time) to avoid browser limitations
-      const audioUrls = surah.ayahs.map(a => `http://192.168.1.69:5000/api/quran/audio?url=${encodeURIComponent(a.audio)}`);
+      const audioUrls = surah.ayahs.map(a => `http://localhost:5000/api/quran/audio?url=${encodeURIComponent(a.audio)}`);
       
       const batchSize = 5;
       for (let i = 0; i < audioUrls.length; i += batchSize) {
@@ -335,7 +335,7 @@ export default function SurahDetails() {
 
             {/* Listen and Practice */}
             <div className="mt-6 pt-6 border-t border-white/5">
-              <AudioPlayer audioUrl={`http://192.168.1.69:5000/api/quran/audio?url=${encodeURIComponent(ayah.audio)}`} storyId={null} />
+              <AudioPlayer audioUrl={`http://localhost:5000/api/quran/audio?url=${encodeURIComponent(ayah.audio)}`} storyId={null} />
               <PracticeRecitation surahNumber={surah.number} ayahNumber={ayah.numberInSurah} targetText={ayah.text} />
             </div>
           </div>

@@ -8,7 +8,7 @@ function AI() {
 
   useEffect(() => {
     if (storyId) {
-      fetch(`http://192.168.1.69:5000/api/stories/${storyId}`)
+      fetch(`http://localhost:5000/api/stories/${storyId}`)
         .then(res => res.json())
         .then(data => {
           if (data && data.title) {
