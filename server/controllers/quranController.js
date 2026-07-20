@@ -283,7 +283,15 @@ export const gradeRecitation = async (req, res) => {
     res.json({
       score: tajweedAnalysis ? tajweedAnalysis.score : score,
       transcript: transcription,
-      words: tajweedAnalysis ? tajweedAnalysis.words : result,
+      words: tajweedAnalysis ? tajweedAnalysis.words.map(w => ({
+        word: w.word,
+        matched: w.correct,  // Map correct to matched for compatibility
+        correct: w.correct,
+        issue: w.issue,
+        letter: w.letter,
+        note: w.note
+      })) : result,
+      overall_pass: tajweedAnalysis ? tajweedAnalysis.overall_pass : (score === 100),
       tajweedAnalysis
     });
 

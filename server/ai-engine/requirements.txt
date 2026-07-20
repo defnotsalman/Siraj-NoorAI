@@ -10,3 +10,7 @@ imageio-ffmpeg>=0.4.9
 accelerate>=0.28.0
 librosa
 soundfile
+quran-muaalem
+quran-transcript
+rapidfuzz
+levenshtein

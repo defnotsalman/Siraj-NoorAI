@@ -292,13 +292,13 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
             <div className="space-y-3">
               <div>
                 <h5 className="text-white font-medium flex items-center gap-2 mb-1">
-                  {result.score === 100 ? '✨ Excellent!' : '⚠️ Try Again!'} 
+                  {result.overall_pass ? '✨ Excellent!' : '⚠️ Try Again!'} 
                   <span className="text-xs text-slate-500 font-normal">(Attempt #{attemptCount})</span>
                 </h5>
                 <p className="text-sm text-slate-400">
-                  {result.score === 100 
+                  {result.overall_pass 
                     ? "Your pronunciation is highly accurate." 
-                    : "Some words were pronounced incorrectly. Focus on pronunciation and rhythm."}
+                    : "Some words were pronounced incorrectly. Focus on the highlighted words and try again."}
                 </p>
               </div>
               
@@ -319,7 +319,7 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
             </div>
             <div className="flex flex-col items-end">
               <span className="text-xs text-slate-500 mb-1">Accuracy Score</span>
-              <span className={`text-2xl font-bold ${result.score === 100 ? 'text-emerald-400' : 'text-amber-500'}`}>
+              <span className={`text-2xl font-bold ${result.overall_pass ? 'text-emerald-400' : 'text-amber-500'}`}>
                 {result.score}%
               </span>
             </div>
@@ -328,16 +328,36 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
           {/* Word Matching Visualization */}
           <div className="bg-white/[0.02] p-4 rounded-lg">
             <div className="flex flex-wrap gap-2 text-2xl font-nastaliq justify-end leading-loose" dir="rtl">
-              {result.words.map((w, i) => (
-                <span key={i} className={w.matched ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'text-amber-500 opacity-60'}>
-                  {w.word}
-                </span>
-              ))}
+              {result.words.map((w, i) => {
+                const isCorrect = w.matched !== undefined ? w.matched : w.correct;
+                return (
+                  <span key={i} className={isCorrect ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'text-rose-400 border-b-2 border-rose-500/50 px-1'}>
+                    {w.word}
+                  </span>
+                );
+              })}
             </div>
           </div>
 
+          {/* Pronunciation error details */}
+          {result.words && result.words.some(w => w.correct === false) && (
+            <div className="bg-rose-500/10 border border-rose-500/20 rounded-lg p-4 space-y-2 text-left" dir="ltr">
+              <h6 className="text-rose-300 font-semibold text-xs uppercase tracking-wider">Pronunciation feedback:</h6>
+              {result.words.filter(w => w.correct === false).map((w, idx) => (
+                <div key={idx} className="text-xs text-slate-300 flex items-start gap-2">
+                  <span className="text-rose-400">⚠️</span>
+                  <div>
+                    <span className="font-bold text-white font-nastaliq text-sm ml-1" dir="rtl">"{w.word}"</span>: 
+                    <span className="text-slate-400"> {w.note || 'Incorrect pronunciation'}</span>
+                    {w.letter && <span className="text-amber-400 ml-1">({w.issue} on letter "{w.letter}")</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Tips Section */}
-          <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-4">
+          <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-4 text-left">
             <h6 className="text-indigo-300 font-medium text-sm flex items-center gap-2 mb-3">
               💡 Tips:
             </h6>
@@ -352,7 +372,7 @@ export default function PracticeRecitation({ surahNumber, ayahNumber, targetText
           {/* Demo Footnote */}
           <div className="pt-2 border-t border-white/5 flex justify-center">
             <span className="text-[10px] text-slate-600 font-mono tracking-wider">
-              Analyzed using MFCC + DTW + Cosine Similarity
+              Analyzed using obadx/quran-muaalem (CTC Phoneme Alignment)
             </span>
           </div>
 
