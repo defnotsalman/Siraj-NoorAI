@@ -37,34 +37,174 @@ It is built for two kinds of people at once. Children around five to ten years o
 
 ## 🧠 AI and Data Integrations
 
-- **OpenAI (GPT-4o / GPT-4o-mini)**: Powers the conversational AI chatbot, story summarization, and character interactions.
-- **OpenAI Whisper**: Used for accurate, multi-lingual speech-to-text processing during Quran recitation practice.
-- **Groq (Llama-3)**: Handles high-speed offline batch processing (e.g., extracting moral lessons from 100+ stories during the build step).
-- **Supabase**: Provides Postgres, Authentication (JWT), Row Level Security (RLS), and real-time progress syncing.
-- **Quran.com API (v4)**: Provides the foundational Uthmani text, English/Urdu translations, and audio recitations for the Quran section.
+NoorKids leverages a state-of-the-art hybrid AI architecture combining proprietary/open LLM providers for interactive storytelling chat with specialized speech models for real-time Quranic Arabic recitation analysis.
+
+- **OpenAI (GPT-4o / GPT-4o-mini)**: Powers the children's companion conversational interface, utilizing retrieval-augmented generation (RAG) to ensure responses are safe, accurate, and context-bound.
+- **tarteel-ai/whisper-base-ar-quran**: A speech-to-text model fine-tuned on Quranic recitation, used to transcribe audio and detect word-level boundaries and sequence order.
+- **obadx/quran-muaalem-model-v3_2**: A specialized CTC-based acoustic phoneme alignment model used for Goodness of Pronunciation (GOP) scoring at the phoneme/letter level, and Tajweed rule verification (e.g., Qalqalah, Ghunnah).
+- **Groq (Llama-3)**: Handles high-speed offline batch processing (such as moral lesson extraction, QA chunk generation, and story indexing during the build step).
+- **ElevenLabs & Google Cloud TTS**: Generates rich, professional Urdu voice narrations for all story library audio playback.
+- **Quran.com API (v4)**: Fetches verified Uthmani script and word-by-word translations.
 
 ---
 
-## 📖 Quran Feature & Tajweed Accuracy
+## 📖 Complete Pipeline Architectures
 
-The Quran section uses data fetched directly from the [Quran.com API (v4)](https://api-docs.quran.com/), a free and public REST API. The Uthmani text is displayed with Waqf stopping rules wrapped in styled elements with interactive hover tooltips.
+### 1. "Ask Noor" Story Companion (RAG Pipeline)
 
-**Recitation Practice (Phase 1)**
-The recitation practice feature uses OpenAI Whisper to transcribe the user's recitation and compares it word-by-word against the normalized target Ayah to provide accuracy feedback (checking if the correct words were recited in the correct order).
+To ensure that the companion chatbot answers children's questions using **only** the details from the specific Prophet story they read (preventing hallucinations, external lookups, or references to inappropriate content), we implement a strict localized RAG pipeline.
 
-**Future Direction (Phase 2)**
-True acoustic Tajweed verification (e.g., checking if a *madd* was held for 4 counts, or if a *qalqalah* was bounced correctly) is not currently supported by generic STT models like Whisper. Doing this responsibly would require integrating a specialized acoustic model trained specifically on Quranic recitation or a purpose-built 3rd-party API. We do not attempt to "fake" pronunciation scoring using confidence scores, as this would misrepresent the feedback to learners.
+#### Architecture Flow:
+```
+[User Docx Story] -> [CLI / Admin Panel Processing]
+                            |
+                            v
+                      [Text Cleaner]
+                            |
+                            v
+               [Sliding Window Chunking] (e.g. 300 words, 50-word overlap)
+                            |
+                            v
+              [text-embedding-3-small] -> [JSON Embedding Indexes]
+                                                    |
+[User Chat Request]                                 | (Cosine Similarity)
+    + [Question]   ---------------------------------+
+    + [History]             |
+                            v
+                    [Retrieve Top-K Chunks]
+                            |
+                            v
+                 [System Prompt Augmentation]
+                            |
+                            v
+                 [gpt-4o-mini Completion] -> [Response back to Child]
+```
+
+#### Step-by-Step Execution:
+1. **Story Ingestion & Parsing**: The CLI indexer (`npm run build:stories`) or Admin Panel extracts text from `.docx` files. It strips embedded images, styling, and tables, ensuring only clean Unicode Arabic/Urdu/English text remains.
+2. **Dynamic Chunking**: The clean text is split into chunks of ~300 words using a sliding window with a 50-word overlap to preserve semantic context across chunk boundaries.
+3. **Embedding Generation**: Each chunk is sent to OpenAI's `text-embedding-3-small` API to generate a 1536-dimensional vector representation. These vectors are saved locally under `server/output/stories-index/[story-slug].json`.
+4. **Vector Retrieval (RAG Query)**: When a child asks a question about a story:
+   * The backend generates a 1536-dim vector for the child's query.
+   * It calculates the Cosine Similarity between the query vector and all chunks belonging to that specific story.
+   * The top 3 most relevant chunks are retrieved.
+5. **System Prompt Augmentation & Completion**: The retrieved chunks are injected into a highly restrictive system prompt:
+   ```markdown
+   You are Noor, a warm, gentle, and child-friendly Islamic companion.
+   Answer the child's question using ONLY the provided story text below.
+   If the answer is not in the text, politely tell the child that you only know
+   about this story and invite them to ask something else about it.
+   [Retrieved Story Text Chunks]
+   ```
+   This prompt is processed by `gpt-4o-mini` to return a safe, kid-friendly answer.
+
+---
+
+### 2. Quran Recitation & Tajweed Evaluation Pipeline
+
+Evaluating Quranic recitation requires a multi-stage approach. A typical Speech-to-Text (STT) model like Whisper has a strong language model bias, meaning it will automatically "correct" mispronounced words to match standard vocabulary. To prevent this and provide real-time letter-level accuracy, NoorKids implements a hybrid **Whisper + Muaalem CTC Alignment** pipeline.
+
+#### Pipeline Flow:
+```
+[User Audio (WebM/WAV)]
+         |
+         v
+  [Express Server] ---> (FFmpeg Conversion: mono, 16kHz WAV)
+         |
+         v
+  [AI Engine (Python)]
+         |
+         +--> [tarteel-ai/whisper-base-ar-quran] (Greedy Generation: num_beams=1)
+         |        |
+         |        +--> [Whisper Transcription Output]
+         |
+         +--> [Direct Uthmani Index Lookup] ---> [Uthmani Reference Text]
+         |                                                 |
+         |                                                 v
+         |                                       [quran-phonetizer]
+         |                                                 |
+         |                                                 v
+         +------------------------------------> [obadx/quran-muaalem-model-v3_2]
+                                                           |
+                                                           v
+                                            [CTC Phone Alignment & GOP Scoring]
+                                                           |
+                                                           v
+                                              [Cross-Reference Validator]
+                                            (Detects silent/unrecited words)
+                                                           |
+                                                           v
+                                              [Resilient Fallback Engine]
+                                            (Failsafe if alignment model crashes)
+                                                           |
+                                                           v
+                                             [React UI Colored Highlights]
+```
+
+#### Step-by-Step Execution:
+1. **Audio Recording & Metadata Bundling**:
+   * The child clicks record in `PracticeRecitation.jsx` (MediaRecorder API).
+   * Upon stopping, the React client bundles the audio blob, the target text, `surahNumber`, and `ayahNumber` into a `FormData` object.
+   * **Crucial Detail**: Text metadata fields are appended *before* the large binary audio blob, ensuring Node's `multer` parses the fields successfully before parsing the file stream.
+2. **Audio Normalization**: The Express controller receives the audio, converts it using `ffmpeg` to `16000Hz` sampling rate, single-channel (`mono`), signed `16-bit` PCM WAV format.
+3. **Dual Model Processing in AI Engine**:
+   * **Model A: Whisper Transcription**: The audio is transcribed using `tarteel-ai/whisper-base-ar-quran`. We enforce greedy decoding (`num_beams=1`, `do_sample=False`) to prevent the model from autocorrecting incorrect pronunciations, capturing the raw spoken output.
+   * **Reference Retrieval**: Using `surah_number` and `ayah_number`, the engine retrieves the exact vocalized Uthmani script (e.g. `Aya(sura_idx, aya_idx).get().uthmani`) directly, bypassing fuzzy text matching which causes lookup failures due to spelling normalization.
+   * **Model B: Muaalem Phonetizer & CTC Alignment**:
+     * The target Uthmani text is converted into expected phone sequences (QPS representation) by the `quran-phonetizer`.
+     * The `obadx/quran-muaalem-model-v3_2` CTC model aligns the audio frames with the expected phonemes.
+     * The engine calculates a **Goodness of Pronunciation (GOP)** score by comparing the acoustic frame log-probability of each phoneme against a threshold.
+     * The engine evaluates Tajweed properties from the acoustic predictions:
+       * **Qalqalah** (bouncing/echo sound on letters: *ق, ط, ب, ج, د*)
+       * **Ghunnah** (nasalization duration on letters: *ن, م*)
+4. **Cross-Reference Validation (Partial Recitation Handling)**:
+   * Phonetizers naturally align acoustic features to expected phones even if the user remained silent or stopped halfway through the Ayah.
+   * To prevent unspoken words from falsely appearing green (correct), the engine cross-references the alignment words with the Whisper transcription.
+   * Target words that share less than a 30% match similarity with the Whisper transcription stream are immediately flagged as `"not_recited"` and marked incorrect (displayed as red with a tooltip: `"this word was not recited"`).
+5. **Resilient Fallback Engine**:
+   * If the CTC phonetizer crashes (e.g., due to unusual letter sequence structures), the backend falls back automatically to standard Levenshtein-based word matching (`alignWords`) between the Whisper transcription and the normalized expected text.
+   * This guarantees the child always receives a visual feedback block with highlights, instead of a broken layout or empty screen.
+6. **Frontend Visualizer**:
+   * The React UI maps the returned `words` array.
+   * Words with `correct: true` (or `matched: true`) render in **green** with a glowing drop-shadow.
+   * Words with `correct: false` render in **red** with an underline. Hovering or clicking on the word displays tooltips specifying the Tajweed error, the letter where the mistake occurred, or the unrecited flag.
+
+#### Complete Recitation Example:
+* **Target Ayah (Uthmani)**: `قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ` (Surah 114, Ayah 1)
+* **User Audio**: The child recites only `"قُلْ"` and stops.
+* **Whisper output**: `"قُلْ"`
+* **Pipeline Processing**:
+  * Whisper transcription matches the first word.
+  * Phonetizer aligns the audio for `"قُلْ"`.
+  * The Cross-Reference Validator sees that the Whisper output lacks any similarity for the remaining words: `أَعُوذُ`, `بِرَبِّ`, `ٱلنَّاسِ`.
+  * These three words are flagged with issue `not_recited`.
+* **Output Payload**:
+  ```json
+  {
+    "score": 25,
+    "transcript": "قل",
+    "words": [
+      { "word": "قُلْ", "correct": true, "issue": null },
+      { "word": "أَعُوذُ", "correct": false, "issue": "not_recited", "note": "this word was not recited" },
+      { "word": "بِرَبِّ", "correct": false, "issue": "not_recited", "note": "this word was not recited" },
+      { "word": "ٱلنَّاسِ", "correct": false, "issue": "not_recited", "note": "this word was not recited" }
+    ]
+  }
+  ```
+* **UI Display**: The user sees `قُلْ` in green, and `أَعُوذُ بِرَبِّ ٱلنَّاسِ` in red, showing exactly where they stopped.
+
+---
 
 ## 🧰 Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, Vite, Tailwind CSS v4, React Router v7 |
-| Backend | Node.js and Express |
-| Database and Auth | Supabase, using Postgres, Auth, and Row Level Security |
-| AI and Chat | Groq API (llama-3.3-70b-versatile) |
-| Text to Speech | Google Cloud TTS / ElevenLabs for Urdu voices |
-| Document Parsing | mammoth for docx files, pdf-parse for PDFs |
+| **Frontend** | React 19, Vite, Tailwind CSS v4, React Router v7 |
+| **Backend** | Node.js (Express), Axios, Multer |
+| **AI Engine (Local)** | FastAPI, PyTorch, Transformers (Whisper & Wav2Vec2) |
+| **Database & Auth** | Supabase (Postgres, GoTrue Auth, Storage, Row Level Security) |
+| **Urdu TTS Engine** | ElevenLabs / Google Cloud Text-to-Speech |
+| **Document Parsing** | mammoth (.docx), pdf-parse (.pdf) |
 
 ## 🚀 Getting Started (Internal Company Use Only)
 
